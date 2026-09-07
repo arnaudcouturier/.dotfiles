@@ -194,24 +194,26 @@ appimage_install() {
   local name=$1 url=$2 target tmp old
   require_command curl
   target="$(appimage_path "${url}")"
+  mkdir -p -- "${APPIMAGE_DIR}" "${DESKTOP_DIR}"
   if [[ -x ${target} ]]; then
     log_ok "${name} is already installed: ${target}"
-    return 0
+  else
+    tmp="$(mktemp "${APPIMAGE_DIR}/.${name}.XXXXXX")" || die "Cannot write to ${APPIMAGE_DIR}."
+    CLEANUP_PATH=${tmp}
+    log_info "Downloading ${url}"
+    curl -fL --progress-bar --retry 3 -o "${tmp}" "${url}" || die "Failed to download ${url}"
+    chmod 755 -- "${tmp}"
+    for old in "${APPIMAGE_DIR}/${name}.AppImage" "${APPIMAGE_DIR}/${name}"-*.AppImage; do
+      if [[ -f ${old} && ${old} != "${target}" ]]; then
+        log_info "Removing the previous build: ${old##*/}"
+        rm -f -- "${old}"
+      fi
+    done
+    mv -- "${tmp}" "${target}"
+    CLEANUP_PATH=''
+    log_ok "${name} installed: ${target}"
   fi
-  mkdir -p -- "${APPIMAGE_DIR}" "${DESKTOP_DIR}"
-  tmp="$(mktemp "${APPIMAGE_DIR}/.${name}.XXXXXX")" || die "Cannot write to ${APPIMAGE_DIR}."
-  CLEANUP_PATH=${tmp}
-  log_info "Downloading ${url}"
-  curl -fL --progress-bar --retry 3 -o "${tmp}" "${url}" || die "Failed to download ${url}"
-  chmod 755 -- "${tmp}"
-  for old in "${APPIMAGE_DIR}/${name}.AppImage" "${APPIMAGE_DIR}/${name}"-*.AppImage; do
-    if [[ -f ${old} && ${old} != "${target}" ]]; then
-      log_info "Removing the previous build: ${old##*/}"
-      rm -f -- "${old}"
-    fi
-  done
-  mv -- "${tmp}" "${target}"
-  CLEANUP_PATH=''
+  # Rewritten every run: a deleted launcher would otherwise never come back.
   cat >"$(appimage_desktop "${name}")" <<EOF
 [Desktop Entry]
 Type=Application
@@ -219,13 +221,12 @@ Name=${name}
 Exec=${target}
 Terminal=false
 EOF
-  log_ok "${name} installed: ${target}"
 }
 
 # Is this entry installed? repofile and copr configure sources rather than
 # install anything, so they report installed and are skipped by the checks.
 pkg_query() {
-  local verb=$1 name=$2 url=${3:-}
+  local verb=$1 name=$2 url=${3:-} listed
   case "${verb}" in
     repofile | copr) return 0 ;;
     repo | aur | rpm)
@@ -236,12 +237,16 @@ pkg_query() {
       ;;
     appimage) [[ -x "$(appimage_path "${url}")" ]] ;;
     npm)
+      # Capture before matching: `npm ls -g` exits non-zero over any extraneous
+      # or unmet dependency, and pipefail would read that as "not installed".
       command -v npm >/dev/null 2>&1 || return 1
-      npm ls -g --depth=0 2>/dev/null | grep -Fq -- "${name}"
+      listed="$(npm ls -g --depth=0 2>/dev/null || true)"
+      grep -Fq -- "${name}@" <<<"${listed}"
       ;;
     flatpak)
       command -v flatpak >/dev/null 2>&1 || return 1
-      flatpak list --app --columns=application 2>/dev/null | grep -Fxq -- "${name}"
+      listed="$(flatpak list --app --columns=application 2>/dev/null || true)"
+      grep -Fxq -- "${name}" <<<"${listed}"
       ;;
   esac
 }
@@ -262,7 +267,12 @@ pkg_install() {
       log_warn 'AUR PKGBUILDs are user-produced. Review the changes shown by yay before approving.'
       yay -S --aur --needed -- "${name}"
       ;;
-    rpm) sudo dnf install -y -- "${url}" ;;
+    rpm)
+      # dnf has to download the package before it can tell the pinned build is
+      # already installed, so ask rpm first — these are 100MB+ each.
+      pkg_query rpm "${name}" && return 0
+      sudo dnf install -y -- "${url}"
+      ;;
     repofile) sudo dnf config-manager addrepo --from-repofile="${name}" --overwrite ;;
     copr) sudo dnf -y copr enable "${name}" ;;
     npm)
@@ -742,8 +752,10 @@ cmd_benchmark_shell() {
     ((us > max)) && max=${us}
     true
   done
-  local avg=$((total / runs))
-  log_ok "fish startup: avg $((avg / 1000)).$((avg % 1000 / 10))ms, fastest $((min / 1000))ms, slowest $((max / 1000))ms over ${runs} runs."
+  local avg=$((total / runs)) summary
+  printf -v summary 'avg %d.%02dms, fastest %dms, slowest %dms over %d runs' \
+    $((avg / 1000)) $((avg % 1000 / 10)) $((min / 1000)) $((max / 1000)) "${runs}"
+  log_ok "fish startup: ${summary}"
   if ((avg > 100000)); then
     log_warn 'Above 100ms — check fish conf.d additions and the starship timeout.'
   fi
