@@ -1,14 +1,12 @@
-# Arch package bundle. `dot` installs every entry; `dot package add/remove`
-# edits this file. Trailing # comments say why the entry is here.
+# Arch packages. `dot package add/remove` edits this file; the trailing
+# comment on each line says why the entry is there.
 #
-#   repo "name"            official repositories, installed with pacman
-#   aur "name"             AUR, installed with yay (dot init bootstraps yay)
-#   appimage "Name" "URL"  official AppImage into ~/Applications — a last
-#                          resort here, since the AUR usually has a package
+#   repo "name"            official repositories, via pacman
+#   aur "name"             AUR, via yay (dot init bootstraps yay)
+#   appimage "Name" "URL"  pinned AppImage into ~/Applications (last resort;
+#                          the AUR usually has a package)
 #
-# repo beats aur when both carry a package. Names are never translated to or
-# from fedora.bundle.
-
+# repo beats aur. Names are never translated to or from fedora.bundle.
 # Shell toolchain (dot init also makes fish the login shell)
 repo "fish" # friendly interactive shell
 repo "starship" # prompt

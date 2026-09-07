@@ -353,6 +353,8 @@ install_packages() {
     esac
   done
   # One batched transaction per package manager (and one yay review prompt).
+  # -Syu, not -S: Arch does not support installing into a partially upgraded
+  # system, so a repo install upgrades it.
   if ((${#repo_pkgs[@]} > 0)); then
     log_step "Installing ${#repo_pkgs[@]} repo package(s)"
     case "${DISTRO}" in

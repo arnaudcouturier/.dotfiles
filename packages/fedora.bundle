@@ -1,24 +1,16 @@
-# Fedora package bundle. `dot` installs every entry; `dot package add/remove`
-# edits this file. Trailing # comments say why the entry is here.
+# Fedora packages. `dot package add/remove` edits this file; the trailing
+# comment on each line says why the entry is there.
 #
-#   repo "name"            dnf, from Fedora's repositories or one added below
-#   repofile "URL"         vendor repository file (dnf config-manager addrepo)
-#   copr "owner/project"   COPR repository (dnf copr enable)
-#   rpm "name" "URL"       standalone official RPM, pinned; name is what dnf
-#                          installs it as, and is not derivable from the URL
-#   appimage "Name" "URL"  official AppImage, into ~/Applications, pinned
+#   repo "name"            dnf, from Fedora's repos or one added below
+#   repofile "URL"         vendor repository file
+#   copr "owner/project"   COPR repository
+#   rpm "name" "URL"       pinned official RPM (the URL hides the real name)
+#   appimage "Name" "URL"  pinned AppImage into ~/Applications
 #   npm "package"          global npm package (--ignore-scripts)
 #
-# dot configures every source before installing any package, so keep each
-# repofile/copr entry next to the repo entries it feeds. Prefer a vendor
-# repository over a pinned rpm/appimage: it brings updates with it. Flatpak is
-# deliberately not supported — native packages only.
-#
-# Names are never translated from arch.bundle — Fedora differs (fd-find, gh,
-# ShellCheck) or matches by coincidence. Every entry was verified against the
-# vendor; packages/fedora-audit.md records what was checked and what was
-# rejected. `aur` is an Arch verb and is refused here.
-
+# Sources are configured before any package installs, so keep each repofile and
+# copr next to what it feeds. Prefer the route that brings updates. No Flatpak,
+# no names translated from arch.bundle, and `aur` is refused here.
 # Shell toolchain (dot init also makes fish the login shell)
 repo "fish" # friendly interactive shell
 copr "atim/starship" # the COPR starship's own README points Fedora users to
