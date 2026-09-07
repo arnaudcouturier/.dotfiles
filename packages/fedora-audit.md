@@ -51,6 +51,7 @@ installed — verified from each package's own header:
 | --- | --- | --- |
 | Keeper | `keeperpasswordmanager-18.6.1-1.x86_64.rpm` | `keeperpasswordmanager` 18.6.1-1.fc37 — note the dist tag: the NVRA in the file name (`-1.x86_64`) is not what `rpm -q` sees |
 | Proton Mail | `ProtonMail-desktop-beta.rpm` | `proton-mail` 1.13.4 — the file name has no relation to the package name, and "beta" is the file name, not the channel |
+| Equibop | `equibop-3.3.0.x86_64.rpm` | `equibop` 3.3.0-1 — the one case where the file name is honest; verified from the header all the same |
 
 - **Keeper** publishes an RPM repository
   (`download.keepersecurity.com/desktop_electron/Linux/repo/rpm/`) but no
@@ -63,11 +64,12 @@ installed — verified from each package's own header:
   Watch the tags: a release can carry only the Android APK, so pin the newest
   tag that actually has an `.AppImage` asset. Obsidian's own updater may
   replace the file in place. Arch keeps the packaged `obsidian` instead.
+- **Equibop** ships an RPM with every GitHub release from the Equicord
+  project; there is no repository, so the URL is pinned per release. Bump the
+  tag and the version in the file name together.
 
-## Flathub and npm
+## npm
 
-- **Equibop** — `org.equicord.equibop`, manifest maintained by the Equicord
-  project. Its GitHub releases also carry RPMs, but Flathub brings updates.
 - **pi** (`@earendil-works/pi-coding-agent`) and **Codex** (`@openai/codex`) —
   official npm packages, the only Fedora route either project documents.
   Installed with `--ignore-scripts`, pi's documented supply-chain posture.
@@ -87,11 +89,13 @@ app. Arch uses the AUR `chatgpt-desktop`, which repacks that same `.deb`.
 
 ## Rejected
 
+- **Flatpak, categorically** — not wanted in this setup at any priority.
+  `dot` has no flatpak verb; an app without a native package gets a pinned
+  RPM or an AppImage. This is why Equibop is a pinned RPM rather than the
+  Equicord project's own Flathub manifest.
 - **Deriving an RPM's package name from its URL** — broken for both entries
   above (dist tag, unrelated file name), which is why the bundle records the
   name.
-- **Obsidian from Flathub** (`md.obsidian.Obsidian`) — community-packaged; the
-  official AppImage was preferred.
 - **Brave from GitHub release assets** — superseded by the vendor repository,
   which brings updates.
 - **starship via `starship.rs/install.sh`** — installs outside dnf, breaking

@@ -6,13 +6,13 @@
 #   copr "owner/project"   COPR repository (dnf copr enable)
 #   rpm "name" "URL"       standalone official RPM, pinned; name is what dnf
 #                          installs it as, and is not derivable from the URL
-#   flatpak "app.id"       Flathub application
 #   appimage "Name" "URL"  official AppImage, into ~/Applications, pinned
 #   npm "package"          global npm package (--ignore-scripts)
 #
 # dot configures every source before installing any package, so keep each
 # repofile/copr entry next to the repo entries it feeds. Prefer a vendor
-# repository over a pinned rpm/appimage: it brings updates with it.
+# repository over a pinned rpm/appimage: it brings updates with it. Flatpak is
+# deliberately not supported — native packages only.
 #
 # Names are never translated from arch.bundle — Fedora differs (fd-find, gh,
 # ShellCheck) or matches by coincidence. Every entry was verified against the
@@ -55,9 +55,7 @@ repo "brave-origin" # Brave Origin, the system's Chromium-based browser
 rpm "keeperpasswordmanager" "https://download.keepersecurity.com/desktop_electron/Linux/repo/rpm/keeperpasswordmanager-18.6.1-1.x86_64.rpm" # Keeper password manager (vendor RPM repo ships no .repo file)
 rpm "proton-mail" "https://proton.me/download/mail/linux/1.13.4/ProtonMail-desktop-beta.rpm" # Proton Mail and Calendar (stable channel; the file name says beta, the channel does not)
 appimage "Obsidian" "https://github.com/obsidianmd/obsidian-releases/releases/download/v1.13.7/Obsidian-1.13.7.AppImage" # Obsidian notes (Obsidian's own updater may replace this file in place)
-
-# Applications from Flathub (no official RPM)
-flatpak "org.equicord.equibop" # Equibop Discord client, packaged by the Equicord project
+rpm "equibop" "https://github.com/Equicord/Equibop/releases/download/v3.3.0/equibop-3.3.0.x86_64.rpm" # Equibop Discord client, from the Equicord project's own release
 
 # AI agent CLIs
 repo "nodejs" # Node.js runtime

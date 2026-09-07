@@ -50,7 +50,6 @@ installs first and records the entry only on success; a flag picks the verb:
 | `repofile "URL"` | `--repofile` | vendor repository file (Fedora) |
 | `copr "owner/project"` | `--copr` | COPR repository (Fedora) |
 | `rpm "name" "URL"` | `--rpm` | pinned official RPM (Fedora) |
-| `flatpak "app.id"` | `--flatpak` | Flathub app (Fedora) |
 | `appimage "Name" "URL"` | `--appimage` | pinned AppImage into `~/Applications` |
 | `npm "package"` | `--npm` | global npm package (Fedora) |
 
@@ -64,7 +63,8 @@ installs first and records the entry only on success; a flag picks the verb:
 installs, so those entries record the name too — `dot` resolves it from the RPM
 header (or the file name) when you add one, and then queries and removes by
 name. Bump the URL to update. Everything else updates through its own package
-manager, so prefer a vendor repository over a pinned download.
+manager, so prefer a vendor repository over a pinned download. Flatpak is
+deliberately not supported: native packages only.
 
 Package names are never translated between distros: Arch and Fedora spell things
 differently (`fd` vs `fd-find`, `github-cli` vs `gh`) or agree by coincidence.

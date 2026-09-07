@@ -28,7 +28,9 @@ README.md covers usage; this file covers the rules that are easy to break.
   comment, never a guessed name. `dot` refuses a verb that the current distro
   cannot use, and dies before changing anything.
 - **Prefer the route that brings updates.** On Fedora: vendor repository >
-  COPR > pinned RPM > Flathub > AppImage > npm. `repo` beats `aur` on Arch.
+  COPR > pinned RPM > AppImage > npm. `repo` beats `aur` on Arch.
+  **Flatpak is not an option** — the user does not want it, and `dot` has no
+  flatpak verb. An app with no native package gets a pinned RPM or AppImage.
   Pinned URLs (`rpm`, `appimage`) age — they carry an explicit name because
   the URL does not reveal what it installs.
 - **`install_packages` runs in three passes**: configure every source

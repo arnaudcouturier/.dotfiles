@@ -39,7 +39,7 @@ dot — install packages and link dotfiles on Arch and Fedora.
   ./dot doctor           check helpers, packages, plugins, symlinks, shell
   ./dot check-packages   list bundle entries missing from this machine
   ./dot package list     show this distro's bundle
-  ./dot package add NAME|URL [--aur|--rpm|--repofile|--copr|--flatpak|--appimage|--npm]
+  ./dot package add NAME|URL [--aur|--rpm|--repofile|--copr|--appimage|--npm]
   ./dot package remove NAME
   ./dot benchmark-shell [-r RUNS]   time fish startup
 
@@ -131,7 +131,7 @@ parse_bundle_line() {
 # across distros, so a verb that cannot work here is a hard error.
 require_verb_for_distro() {
   case "$1" in
-    repo | aur | rpm | repofile | copr | flatpak | appimage | npm) ;;
+    repo | aur | rpm | repofile | copr | appimage | npm) ;;
     *) die "Unknown bundle verb: $1" ;;
   esac
   case "${DISTRO}:$1" in
@@ -243,11 +243,6 @@ pkg_query() {
       listed="$(npm ls -g --depth=0 2>/dev/null || true)"
       grep -Fq -- "${name}@" <<<"${listed}"
       ;;
-    flatpak)
-      command -v flatpak >/dev/null 2>&1 || return 1
-      listed="$(flatpak list --app --columns=application 2>/dev/null || true)"
-      grep -Fxq -- "${name}" <<<"${listed}"
-      ;;
   esac
 }
 
@@ -281,11 +276,6 @@ pkg_install() {
       require_command npm
       sudo npm install -g --ignore-scripts "${name}"
       ;;
-    flatpak)
-      require_command flatpak
-      sudo flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
-      sudo flatpak install --or-update -y flathub "${name}"
-      ;;
     appimage) appimage_install "${name}" "${url}" ;;
   esac
 }
@@ -304,7 +294,6 @@ pkg_remove() {
     aur) yay -Rns --noconfirm -- "${name}" || log_warn "yay could not remove ${name}." ;;
     rpm) sudo dnf remove -y -- "${name}" || log_warn "dnf could not remove ${name}." ;;
     npm) sudo npm uninstall -g "${name}" || log_warn "npm could not remove ${name}." ;;
-    flatpak) sudo flatpak uninstall -y --noninteractive "${name}" || log_warn "flatpak could not remove ${name}." ;;
     appimage) rm -f -- "$(appimage_path "${url}")" "$(appimage_desktop "${name}")" ;;
     repofile) log_warn "The repository from ${name} stays configured; drop its file from /etc/yum.repos.d if unwanted." ;;
     copr) log_warn "The COPR stays enabled; run: sudo dnf copr disable ${name}" ;;
@@ -337,7 +326,6 @@ ensure_helpers() {
       require_command dnf
       local -a missing=()
       command -v stow >/dev/null 2>&1 || missing+=(stow)
-      command -v flatpak >/dev/null 2>&1 || missing+=(flatpak)
       # config-manager and copr plugins, used by the repofile and copr verbs.
       rpm -q dnf5-plugins >/dev/null 2>&1 || missing+=(dnf5-plugins)
       if ((${#missing[@]} > 0)); then
@@ -630,7 +618,7 @@ cmd_doctor() {
 cmd_package_add() {
   local name=${1:-} verb='repo' url='' flag
   shift || true
-  [[ -n ${name} ]] || die 'Usage: ./dot package add NAME|URL [--aur|--rpm|--repofile|--copr|--flatpak|--appimage|--npm]'
+  [[ -n ${name} ]] || die 'Usage: ./dot package add NAME|URL [--aur|--rpm|--repofile|--copr|--appimage|--npm]'
   # A flag names the bundle verb; require_verb_for_distro rejects the ones
   # this distro cannot use.
   for flag in "$@"; do
@@ -657,10 +645,6 @@ cmd_package_add() {
       ;;
     repofile)
       [[ ${name} == https://* ]] || die "repofile entries need an https URL; got: ${name}"
-      ;;
-    flatpak)
-      [[ ${name} =~ ^[A-Za-z0-9._-]+$ ]] \
-        || die "flatpak entries need a Flathub app id (e.g. com.example.App); got: ${name}"
       ;;
     *)
       [[ ${name} =~ ^[@A-Za-z0-9._/+-]+$ ]] || die "Invalid ${verb} entry name: ${name}"
