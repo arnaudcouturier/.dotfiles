@@ -1,26 +1,19 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# dot — the only script in this repo.
-# Arch Linux, opinionated, idempotent.
-#
-#   ./dot init              full setup: helpers + packages + herdr + stow + herdr plugins + fish shell
-#   ./dot stow              (re)link home/ into $HOME, overwriting conflicts
-#   ./dot doctor            verify helpers, packages, symlinks, login shell
-#   ./dot check-packages    list bundle packages missing from this machine
-#   ./dot package add NAME [--aur]     add to bundle and install it
-#   ./dot package remove NAME          remove from bundle and uninstall it
-#   ./dot package list                 show the bundle file
-#   ./dot update            git pull + install + restow
-#   ./dot benchmark-shell   time fish startup over N runs
-#
-# Conventions: home/ mirrors $HOME (home/.config/fish -> ~/.config/fish).
-# packages/bundle holds `repo "..."` (pacman) and `aur "..."` (yay) lines.
+# dot — the only script in this repo. Arch Linux and Fedora, opinionated,
+# idempotent. `./dot help` lists the commands; README.md explains the layout
+# and packages/<distro>.bundle holds the package list.
 
 DOTFILES_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 readonly DOTFILES_DIR
 readonly HOME_DIR="${DOTFILES_DIR}/home"
-readonly BUNDLE_FILE="${DOTFILES_DIR}/packages/bundle"
+readonly APPIMAGE_DIR="${HOME}/Applications"
+readonly DESKTOP_DIR="${HOME}/.local/share/applications"
+
+# Set by detect_distro: arch or fedora.
+DISTRO=''
+BUNDLE_FILE=''
 
 if [[ -t 1 ]]; then
   readonly C_RESET=$'\e[0m' C_BOLD=$'\e[1m' C_DIM=$'\e[2m'
@@ -37,19 +30,21 @@ log_error() { printf '%s[x]%s %s\n' "${C_RED}" "${C_RESET}" "$*" >&2; }
 die() { log_error "$*"; exit 1; }
 
 usage() {
-  sed -n '/^# dot/,/^$/p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
   cat <<'EOF'
-Usage:
-  ./dot init
-  ./dot stow
-  ./dot doctor
-  ./dot check-packages
-  ./dot package add NAME [--aur]
+dot — install packages and link dotfiles on Arch and Fedora.
+
+  ./dot init             helpers, packages, herdr, stow, plugins, fish shell
+  ./dot update           git pull --rebase, then everything init does
+  ./dot stow             (re)link home/ into $HOME, overwriting conflicts
+  ./dot doctor           check helpers, packages, plugins, symlinks, shell
+  ./dot check-packages   list bundle entries missing from this machine
+  ./dot package list     show this distro's bundle
+  ./dot package add NAME|URL [--aur|--rpm|--repofile|--copr|--flatpak|--appimage|--npm]
   ./dot package remove NAME
-  ./dot package list
-  ./dot update
-  ./dot benchmark-shell
-  ./dot help
+  ./dot benchmark-shell [-r RUNS]   time fish startup
+
+The distro picks the bundle: packages/arch.bundle or packages/fedora.bundle.
+Flags name the bundle verb; without one an entry is a repository package.
 EOF
 }
 
@@ -57,217 +52,419 @@ require_user() {
   ((EUID != 0)) || die 'Run ./dot as your regular user, not root. It calls sudo itself when needed.'
 }
 
-# Keep sudo credentials alive during installation; stop the refresher on exit.
-ELEVATION_PID=''
-CLEANUP_PATH=''
-
-# Remove the current temporary file or directory and stop sudo refresh on exit.
-cleanup_dot() {
-  end_elevation
-  if [[ -n ${CLEANUP_PATH} ]]; then
-    rm -rf -- "${CLEANUP_PATH}"
-  fi
-}
-trap cleanup_dot EXIT
-
-end_elevation() {
-  if [[ -n ${ELEVATION_PID} ]]; then
-    # Kill the refresher's sleep child first: killing only the subshell
-    # orphans sleep, and the loop would then refresh sudo forever.
-    if command -v pkill >/dev/null 2>&1; then
-      pkill -P "${ELEVATION_PID}" 2>/dev/null || true
-    fi
-    kill "${ELEVATION_PID}" 2>/dev/null || true
-    wait "${ELEVATION_PID}" 2>/dev/null || true
-    ELEVATION_PID=''
-  fi
-}
-
-begin_elevation() {
-  ((EUID != 0)) || return 0
-  command -v sudo >/dev/null 2>&1 || die 'sudo is required but missing.'
-  log_info 'sudo will ask for your password once; it covers the whole run.'
-  sudo -v || die 'sudo authentication failed.'
-  # Refresh well inside sudo's 5-minute timestamp_timeout (man sudoers).
-  ( while sleep 120; do sudo -n -v 2>/dev/null || exit 0; done ) >/dev/null 2>&1 &
-  ELEVATION_PID=$!
-}
-
-require_arch() {
-  [[ -r /etc/arch-release ]] || die 'This repo requires Arch Linux.'
-}
-
 require_command() {
   command -v "$1" >/dev/null 2>&1 || die "Required command is missing: $1"
 }
 
-# Normalize one bundle line into ENTRY_VERB / ENTRY_NAME. Returns 1 for
-# blank lines and comments (callers print those through verbatim).
+# Temp file to clean up and the sudo refresher to stop when the script exits.
+ELEVATION_PID=''
+CLEANUP_PATH=''
+
+cleanup_dot() {
+  end_elevation
+  [[ -n ${CLEANUP_PATH} ]] && rm -rf -- "${CLEANUP_PATH}"
+  return 0
+}
+trap cleanup_dot EXIT
+
+end_elevation() {
+  [[ -n ${ELEVATION_PID} ]] || return 0
+  # Kill the refresher's sleep child too: bash defers the signal until its
+  # foreground child exits, which would keep the loop alive one more cycle.
+  pkill -P "${ELEVATION_PID}" 2>/dev/null || true
+  kill "${ELEVATION_PID}" 2>/dev/null || true
+  wait "${ELEVATION_PID}" 2>/dev/null || true
+  ELEVATION_PID=''
+}
+
+# Ask for the sudo password once, then keep the timestamp alive for the run.
+begin_elevation() {
+  require_command sudo
+  log_info 'sudo will ask for your password once; it covers the whole run.'
+  sudo -v || die 'sudo authentication failed.'
+  # Refresh well inside sudo's 5-minute timestamp_timeout (man sudoers).
+  (while sleep 120; do sudo -n -v 2>/dev/null || exit 0; done) >/dev/null 2>&1 &
+  ELEVATION_PID=$!
+}
+
+# Pick this machine's bundle. Arch derivatives are accepted through ID_LIKE;
+# anything that is neither Arch nor Fedora is rejected before any change.
+detect_distro() {
+  [[ -n ${DISTRO} ]] && return 0
+  [[ -r /etc/os-release ]] || die '/etc/os-release not found; this repo supports Arch and Fedora.'
+  local ids
+  # os-release is a shell fragment by spec; read it in a subshell.
+  # shellcheck source=/dev/null
+  ids="$(. /etc/os-release && printf '%s %s' "${ID:-}" "${ID_LIKE:-}")"
+  case " ${ids} " in
+    *' arch '*) DISTRO=arch ;;
+    *' fedora '*) DISTRO=fedora ;;
+    *) die "Unsupported distro: ${ids:-unknown}. This repo supports Arch and Fedora." ;;
+  esac
+  BUNDLE_FILE="${DOTFILES_DIR}/packages/${DISTRO}.bundle"
+}
+
+# --- bundle -----------------------------------------------------------------
+
+# Split one bundle line into ENTRY_VERB / ENTRY_NAME / ENTRY_URL. Returns 1
+# for blank lines and comments. Accepts repo "foo", aur 'foo', repo foo, and
+# the two-field forms rpm "name" "URL" / appimage "name" "URL", each with an
+# optional trailing # comment. require_verb_for_distro validates the verb.
 parse_bundle_line() {
-  local line=$1 rest
-  line=${line#"${line%%[![:space:]]*}"}
-  line=${line%"${line##*[![:space:]]}"}
-  [[ -z "${line}" || "${line}" == \#* ]] && return 1
-  [[ "${line}" =~ ^(repo|aur)[[:space:]]+([^[:space:]#]+)(.*)$ ]] \
-    || die "Cannot parse bundle line: ${line} (expected: repo \"name\" or aur \"name\")"
-  ENTRY_VERB=${BASH_REMATCH[1]}
-  ENTRY_NAME=${BASH_REMATCH[2]}
-  ENTRY_NAME=${ENTRY_NAME#\"}; ENTRY_NAME=${ENTRY_NAME%\"}
-  ENTRY_NAME=${ENTRY_NAME#\'}; ENTRY_NAME=${ENTRY_NAME%\'}
-  [[ -n "${ENTRY_NAME}" ]] || die "Empty package name in bundle line: ${line}"
-  rest=${BASH_REMATCH[3]}
-  rest=${rest#"${rest%%[![:space:]]*}"}
-  [[ -z "${rest}" || "${rest}" == \#* ]] \
-    || die "Cannot parse bundle line: ${line} (trailing text after package name)"
+  local line=${1%%#*} extra
+  read -r ENTRY_VERB ENTRY_NAME ENTRY_URL extra <<<"${line}"
+  [[ -n ${ENTRY_VERB} ]] || return 1
+  ENTRY_NAME=${ENTRY_NAME#[\"\']}; ENTRY_NAME=${ENTRY_NAME%[\"\']}
+  ENTRY_URL=${ENTRY_URL#[\"\']}; ENTRY_URL=${ENTRY_URL%[\"\']}
+  [[ -n ${ENTRY_NAME} ]] || die "Bundle line has no package name: ${line}"
+  [[ -z ${extra} ]] || die "Bundle line has trailing text: ${line}"
+  # rpm and appimage install from a pinned URL that does not reveal the
+  # installed name, so they carry both; every other verb names its own thing.
+  case "${ENTRY_VERB}" in
+    rpm | appimage) [[ -n ${ENTRY_URL} ]] || die "${ENTRY_VERB} entries need a name and a URL: ${line}" ;;
+    *) [[ -z ${ENTRY_URL} ]] || die "${ENTRY_VERB} entries take a single name: ${line}" ;;
+  esac
   return 0
 }
 
-# Parse packages/bundle into REPO_PKGS and AUR_PKGS arrays.
-# Accepts: repo "foo", aur 'foo', repo foo — trailing # comments allowed.
+# Each bundle is an installation recipe for one distro: nothing is translated
+# across distros, so a verb that cannot work here is a hard error.
+require_verb_for_distro() {
+  case "$1" in
+    repo | aur | rpm | repofile | copr | flatpak | appimage | npm) ;;
+    *) die "Unknown bundle verb: $1" ;;
+  esac
+  case "${DISTRO}:$1" in
+    arch:repo | arch:aur | arch:appimage | fedora:repo) return 0 ;;
+    fedora:aur) die "Verb 'aur' is Arch-only. Give packages/fedora.bundle a verified Fedora source instead." ;;
+    fedora:*) return 0 ;;
+    *) die "Verb '$1' is Fedora-only. packages/arch.bundle takes repo, aur, or appimage." ;;
+  esac
+}
+
+# Every entry of this distro's bundle, in file order, as "verb name [url]".
+# Neither field contains whitespace, so `read -r verb name url` splits them.
+BUNDLE_ENTRIES=()
 parse_bundle() {
-  REPO_PKGS=()
-  AUR_PKGS=()
-  [[ -r "${BUNDLE_FILE}" ]] || die "Missing bundle file: ${BUNDLE_FILE}"
+  BUNDLE_ENTRIES=()
+  [[ -r ${BUNDLE_FILE} ]] || die "Missing bundle file: ${BUNDLE_FILE}"
   local line
-  while IFS= read -r line || [[ -n "${line}" ]]; do
+  while IFS= read -r line || [[ -n ${line} ]]; do
     parse_bundle_line "${line}" || continue
-    if [[ "${ENTRY_VERB}" == repo ]]; then
-      REPO_PKGS+=("${ENTRY_NAME}")
-    else
-      AUR_PKGS+=("${ENTRY_NAME}")
-    fi
+    require_verb_for_distro "${ENTRY_VERB}"
+    BUNDLE_ENTRIES+=("${ENTRY_VERB} ${ENTRY_NAME} ${ENTRY_URL}")
   done <"${BUNDLE_FILE}"
 }
 
-ensure_helpers() {
-  if ! command -v yay >/dev/null 2>&1; then
-    # Bootstrap the AUR helper as a regular user.
-    require_command git
-    log_step 'Bootstrapping yay-bin from the AUR'
-    sudo pacman -Syu --needed --noconfirm base-devel git
-    require_command makepkg
-    local tmpdir
-    tmpdir="$(mktemp -d "${TMPDIR:-/tmp}/yay-bin.XXXXXX")" \
-      || die 'Failed to create temp dir for yay bootstrap.'
-    CLEANUP_PATH=${tmpdir}
-    git clone --depth 1 https://aur.archlinux.org/yay-bin.git "${tmpdir}" \
-      || die 'Failed to clone yay-bin from the AUR (network or AUR unreachable).'
-    (cd -- "${tmpdir}" && makepkg -si --noconfirm) \
-      || die 'Failed to build and install yay-bin.'
-    rm -rf -- "${tmpdir}"
-    CLEANUP_PATH=''
-    command -v yay >/dev/null 2>&1 || die 'yay bootstrap finished but yay is still missing.'
-    log_ok 'yay installed.'
-  fi
-  if ! command -v stow >/dev/null 2>&1; then
-    log_step 'Installing stow'
-    sudo pacman -S --needed --noconfirm stow
-  fi
+# The verb an entry is filed under, or nothing when the bundle lacks it.
+bundle_verb_of() {
+  local needle=$1 entry verb name
+  for entry in "${BUNDLE_ENTRIES[@]}"; do
+    read -r verb name _ <<<"${entry}"
+    [[ ${name} == "${needle}" ]] || continue
+    printf '%s\n' "${verb}"
+    return 0
+  done
+  return 1
 }
 
-# Install one package by scope: repo via pacman, aur via yay.
-# Callers print their own context; this only runs the installer.
-pkg_install() {
-  local scope=$1 name=$2
-  if [[ "${scope}" == repo ]]; then
-    sudo pacman -Syu --needed --noconfirm -- "${name}"
-  else
-    require_command yay
-    log_warn 'AUR PKGBUILDs are user-produced. Review the changes shown by yay before approving.'
-    yay -S --aur --needed -- "${name}"
+# --- packages ---------------------------------------------------------------
+
+appimage_path() { printf '%s/%s\n' "${APPIMAGE_DIR}" "$(basename -- "$1")"; }
+
+appimage_desktop() {
+  printf '%s/appimage-%s.desktop\n' "${DESKTOP_DIR}" "$(tr '[:upper:]' '[:lower:]' <<<"$1")"
+}
+
+# App name to default to when `dot package add` is given only a URL:
+# Obsidian-1.13.7.AppImage -> Obsidian. The bundle records it explicitly, so a
+# bad guess is one word to fix by hand.
+appimage_app() {
+  local file
+  file="$(basename -- "$1")"
+  file=${file%.AppImage}
+  printf '%s\n' "${file%%-[0-9]*}"
+}
+
+# Download an AppImage into ~/Applications (no root) and generate a desktop
+# entry so it is launchable without AppImageLauncher. The icon is left to the
+# app itself. The file keeps the pinned URL's name, so bumping the URL
+# reinstalls and sweeps the previous build.
+appimage_install() {
+  local name=$1 url=$2 target tmp old
+  require_command curl
+  target="$(appimage_path "${url}")"
+  if [[ -x ${target} ]]; then
+    log_ok "${name} is already installed: ${target}"
+    return 0
   fi
+  mkdir -p -- "${APPIMAGE_DIR}" "${DESKTOP_DIR}"
+  tmp="$(mktemp "${APPIMAGE_DIR}/.${name}.XXXXXX")" || die "Cannot write to ${APPIMAGE_DIR}."
+  CLEANUP_PATH=${tmp}
+  log_info "Downloading ${url}"
+  curl -fL --progress-bar --retry 3 -o "${tmp}" "${url}" || die "Failed to download ${url}"
+  chmod 755 -- "${tmp}"
+  for old in "${APPIMAGE_DIR}/${name}.AppImage" "${APPIMAGE_DIR}/${name}"-*.AppImage; do
+    if [[ -f ${old} && ${old} != "${target}" ]]; then
+      log_info "Removing the previous build: ${old##*/}"
+      rm -f -- "${old}"
+    fi
+  done
+  mv -- "${tmp}" "${target}"
+  CLEANUP_PATH=''
+  cat >"$(appimage_desktop "${name}")" <<EOF
+[Desktop Entry]
+Type=Application
+Name=${name}
+Exec=${target}
+Terminal=false
+EOF
+  log_ok "${name} installed: ${target}"
+}
+
+# Is this entry installed? repofile and copr configure sources rather than
+# install anything, so they report installed and are skipped by the checks.
+pkg_query() {
+  local verb=$1 name=$2 url=${3:-}
+  case "${verb}" in
+    repofile | copr) return 0 ;;
+    repo | aur | rpm)
+      case "${DISTRO}" in
+        arch) pacman -Q -- "${name}" >/dev/null 2>&1 ;;
+        fedora) rpm -q -- "${name}" >/dev/null 2>&1 ;;
+      esac
+      ;;
+    appimage) [[ -x "$(appimage_path "${url}")" ]] ;;
+    npm)
+      command -v npm >/dev/null 2>&1 || return 1
+      npm ls -g --depth=0 2>/dev/null | grep -Fq -- "${name}"
+      ;;
+    flatpak)
+      command -v flatpak >/dev/null 2>&1 || return 1
+      flatpak list --app --columns=application 2>/dev/null | grep -Fxq -- "${name}"
+      ;;
+  esac
+}
+
+# Install one entry. Batched installs live in install_packages; this is the
+# single-entry path, shared by `dot package add`.
+pkg_install() {
+  local verb=$1 name=$2 url=${3:-}
+  case "${verb}" in
+    repo)
+      case "${DISTRO}" in
+        arch) sudo pacman -Syu --needed --noconfirm -- "${name}" ;;
+        fedora) sudo dnf install -y -- "${name}" ;;
+      esac
+      ;;
+    aur)
+      require_command yay
+      log_warn 'AUR PKGBUILDs are user-produced. Review the changes shown by yay before approving.'
+      yay -S --aur --needed -- "${name}"
+      ;;
+    rpm) sudo dnf install -y -- "${url}" ;;
+    repofile) sudo dnf config-manager addrepo --from-repofile="${name}" --overwrite ;;
+    copr) sudo dnf -y copr enable "${name}" ;;
+    npm)
+      # --ignore-scripts is pi's documented supply-chain posture; it applies
+      # to every npm entry.
+      require_command npm
+      sudo npm install -g --ignore-scripts "${name}"
+      ;;
+    flatpak)
+      require_command flatpak
+      sudo flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+      sudo flatpak install --or-update -y flathub "${name}"
+      ;;
+    appimage) appimage_install "${name}" "${url}" ;;
+  esac
+}
+
+# Uninstall one entry. Failures are warnings: a package may be gone already,
+# or kept as a dependency.
+pkg_remove() {
+  local verb=$1 name=$2 url=${3:-}
+  case "${verb}" in
+    repo)
+      case "${DISTRO}" in
+        arch) sudo pacman -Rns --noconfirm -- "${name}" || log_warn "pacman could not remove ${name}." ;;
+        fedora) sudo dnf remove -y -- "${name}" || log_warn "dnf could not remove ${name}." ;;
+      esac
+      ;;
+    aur) yay -Rns --noconfirm -- "${name}" || log_warn "yay could not remove ${name}." ;;
+    rpm) sudo dnf remove -y -- "${name}" || log_warn "dnf could not remove ${name}." ;;
+    npm) sudo npm uninstall -g "${name}" || log_warn "npm could not remove ${name}." ;;
+    flatpak) sudo flatpak uninstall -y --noninteractive "${name}" || log_warn "flatpak could not remove ${name}." ;;
+    appimage) rm -f -- "$(appimage_path "${url}")" "$(appimage_desktop "${name}")" ;;
+    repofile) log_warn "The repository from ${name} stays configured; drop its file from /etc/yum.repos.d if unwanted." ;;
+    copr) log_warn "The COPR stays enabled; run: sudo dnf copr disable ${name}" ;;
+  esac
+}
+
+ensure_helpers() {
+  case "${DISTRO}" in
+    arch)
+      if ! command -v yay >/dev/null 2>&1; then
+        # Bootstrap the AUR helper as a regular user.
+        require_command git
+        log_step 'Bootstrapping yay-bin from the AUR'
+        sudo pacman -Syu --needed --noconfirm base-devel git
+        require_command makepkg
+        local tmpdir
+        tmpdir="$(mktemp -d "${TMPDIR:-/tmp}/yay-bin.XXXXXX")" || die 'Failed to create temp dir for yay bootstrap.'
+        CLEANUP_PATH=${tmpdir}
+        git clone --depth 1 https://aur.archlinux.org/yay-bin.git "${tmpdir}" \
+          || die 'Failed to clone yay-bin from the AUR (network or AUR unreachable).'
+        (cd -- "${tmpdir}" && makepkg -si --noconfirm) || die 'Failed to build and install yay-bin.'
+        rm -rf -- "${tmpdir}"
+        CLEANUP_PATH=''
+        require_command yay
+        log_ok 'yay installed.'
+      fi
+      command -v stow >/dev/null 2>&1 || sudo pacman -S --needed --noconfirm stow
+      ;;
+    fedora)
+      require_command dnf
+      local -a missing=()
+      command -v stow >/dev/null 2>&1 || missing+=(stow)
+      command -v flatpak >/dev/null 2>&1 || missing+=(flatpak)
+      # config-manager and copr plugins, used by the repofile and copr verbs.
+      rpm -q dnf5-plugins >/dev/null 2>&1 || missing+=(dnf5-plugins)
+      if ((${#missing[@]} > 0)); then
+        log_step "Installing Fedora helpers: ${missing[*]}"
+        sudo dnf install -y "${missing[@]}"
+      fi
+      ;;
+  esac
 }
 
 install_packages() {
   parse_bundle
-  if ((${#REPO_PKGS[@]} > 0)); then
-    log_step "Installing ${#REPO_PKGS[@]} repo package(s) with pacman"
-    sudo pacman -Syu --needed --noconfirm "${REPO_PKGS[@]}"
+  local entry verb name url
+  local -a repo_pkgs=() aur_pkgs=()
+  # Sources first: repofile and copr entries feed the repo entries below them.
+  for entry in "${BUNDLE_ENTRIES[@]}"; do
+    read -r verb name url <<<"${entry}"
+    case "${verb}" in
+      repo) repo_pkgs+=("${name}") ;;
+      aur) aur_pkgs+=("${name}") ;;
+      repofile | copr)
+        log_step "Configuring ${verb} ${name}"
+        pkg_install "${verb}" "${name}"
+        ;;
+    esac
+  done
+  # One batched transaction per package manager (and one yay review prompt).
+  if ((${#repo_pkgs[@]} > 0)); then
+    log_step "Installing ${#repo_pkgs[@]} repo package(s)"
+    case "${DISTRO}" in
+      arch) sudo pacman -Syu --needed --noconfirm "${repo_pkgs[@]}" ;;
+      fedora) sudo dnf install -y "${repo_pkgs[@]}" ;;
+    esac
   fi
-  if ((${#AUR_PKGS[@]} > 0)); then
+  if ((${#aur_pkgs[@]} > 0)); then
     require_command yay
-    log_step "Installing ${#AUR_PKGS[@]} AUR package(s) with yay"
+    log_step "Installing ${#aur_pkgs[@]} AUR package(s)"
     log_warn 'AUR PKGBUILDs are user-produced. Review the changes shown by yay before approving.'
-    yay -S --aur --needed "${AUR_PKGS[@]}"
+    yay -S --aur --needed "${aur_pkgs[@]}"
   fi
+  # Everything else installs one entry at a time, in bundle order.
+  for entry in "${BUNDLE_ENTRIES[@]}"; do
+    read -r verb name url <<<"${entry}"
+    case "${verb}" in
+      repo | aur | repofile | copr) continue ;;
+    esac
+    log_step "Installing ${verb} ${name}"
+    pkg_install "${verb}" "${name}" "${url}"
+  done
   log_ok 'Packages installed.'
 }
 
-# Install Herdr with its upstream installer when missing.
-ensure_herdr() {
-  local found
+# Install a tool from its vendor's own install script when missing. Used for
+# tools whose packaged routes are deprecated or absent.
+ensure_upstream() {
+  local cmd=$1 url=$2 tmp found
   export PATH="${HOME}/.local/bin:${PATH}"
-  if found="$(command -v herdr 2>/dev/null)"; then
-    log_ok "herdr already installed: ${found}"
+  if found="$(command -v "${cmd}" 2>/dev/null)"; then
+    log_ok "${cmd} already installed: ${found}"
     return 0
   fi
   require_command curl
-  require_command sh
-  log_step 'Installing herdr via the official installer (herdr.dev/install.sh)'
-  local tmp
-  tmp="$(mktemp "${TMPDIR:-/tmp}/herdr-install.XXXXXX.sh")" \
-    || die 'Failed to create temp file for the herdr installer.'
+  log_step "Installing ${cmd} via its official installer (${url})"
+  tmp="$(mktemp "${TMPDIR:-/tmp}/${cmd}-install.XXXXXX.sh")" || die "Failed to create a temp file for the ${cmd} installer."
   CLEANUP_PATH=${tmp}
-  curl -fsSL --retry 3 https://herdr.dev/install.sh -o "${tmp}" \
-    || die 'Failed to download the herdr installer (network or herdr.dev unreachable).'
-  sh "${tmp}" || die 'The herdr installer failed.'
+  curl -fsSL --retry 3 "${url}" -o "${tmp}" || die "Failed to download ${url}"
+  sh "${tmp}" || die "The ${cmd} installer failed."
   rm -f -- "${tmp}"
   CLEANUP_PATH=''
   hash -r 2>/dev/null || true
-  if found="$(command -v herdr 2>/dev/null)"; then
-    log_ok "herdr installed: ${found}"
-  else
-    die 'herdr installer finished but no herdr binary was found.'
+  found="$(command -v "${cmd}" 2>/dev/null)" || die "The ${cmd} installer finished but no ${cmd} binary was found."
+  log_ok "${cmd} installed: ${found}"
+}
+
+install_tools() {
+  # Claude Code: npm installs are deprecated upstream. On Arch the bundle's
+  # AUR package already provides it.
+  if [[ ${DISTRO} == fedora ]]; then
+    ensure_upstream claude https://claude.ai/install.sh
   fi
+  ensure_upstream herdr https://herdr.dev/install.sh
+}
+
+# --- dotfiles ---------------------------------------------------------------
+
+# Every file and symlink under home/, NUL-separated, in stable order.
+# node_modules (npm workspaces) and home/.pi/.gitignore stay in the repo.
+home_files() {
+  find "${HOME_DIR}" -mindepth 1 \( -name node_modules -o -name .gitignore \) -prune \
+    -o \( -type f -o -type l \) -print0 | sort -z
 }
 
 stow_dotfiles() {
   require_command stow
-  [[ -d "${HOME_DIR}" ]] || die "Missing home directory: ${HOME_DIR}"
+  [[ -d ${HOME_DIR} ]] || die "Missing home directory: ${HOME_DIR}"
   log_step "Linking home/ into ${HOME} (conflicts are overwritten, no backup)"
-  local source_file relative target source_abs target_link
-  while IFS= read -r -d '' source_file; do
-    relative=${source_file#"${HOME_DIR}/"}
-    target="${HOME}/${relative}"
-    if [[ -d "${target}" && ! -L "${target}" ]]; then
-      # find only yields files/symlinks, so a real directory here means a
-      # file-vs-directory collision stow could never resolve. Fail loudly
-      # instead of leaving it for stow to trip over later.
-      die "Cannot stow ${relative}: ${target} is a directory."
-    fi
-    if [[ -e "${target}" || -L "${target}" ]]; then
-      source_abs="$(realpath -m -- "${source_file}")"
-      if [[ -L "${target}" ]]; then
-        target_link="$(realpath -m -- "${target}")" || target_link=''
-        if [[ "${target_link}" == "${source_abs}" ]]; then
-          continue # already correctly stowed
-        fi
-      fi
-      log_info "Overwriting ${target}"
-      rm -rf -- "${target}"
-    fi
-    mkdir -p -- "$(dirname -- "${target}")"
-  done < <(find "${HOME_DIR}" -mindepth 1 \( -name node_modules -o -name .gitignore \) -prune -o \( -type f -o -type l \) -print0 | sort -z)
+  local src rel target
+  while IFS= read -r -d '' src; do
+    rel=${src#"${HOME_DIR}/"}
+    target="${HOME}/${rel}"
+    [[ -e ${target} || -L ${target} ]] || continue
+    # find yields files and symlinks only, so a real directory here is a
+    # collision stow could never resolve. Fail loudly rather than delete it.
+    [[ -d ${target} && ! -L ${target} ]] && die "Cannot stow ${rel}: ${target} is a directory."
+    [[ "$(realpath -m -- "${target}")" == "$(realpath -m -- "${src}")" ]] && continue
+    log_info "Overwriting ${target}"
+    rm -f -- "${target}"
+  done < <(home_files)
   stow -R --no-folding --ignore='(^|/)node_modules(/|$)' -d "${DOTFILES_DIR}" -t "${HOME}" home
   log_ok 'Dotfiles stowed.'
 }
 
-sync_herdr_plugins() {
-  local plugin_file="${HOME_DIR}/.config/herdr/plugins.txt"
-  require_command herdr
-  [[ -r "${plugin_file}" ]] || die "Missing Herdr plugin list: ${plugin_file}"
-  log_step 'Syncing Herdr plugins'
-  local line failed_plugins=()
-  while IFS= read -r line || [[ -n "${line}" ]]; do
+# Herdr plugins are listed one `owner/repo` per line, comments allowed.
+herdr_plugins() {
+  local plugin_file="${HOME_DIR}/.config/herdr/plugins.txt" line
+  [[ -r ${plugin_file} ]] || die "Missing Herdr plugin list: ${plugin_file}"
+  while IFS= read -r line || [[ -n ${line} ]]; do
     line=${line#"${line%%[![:space:]]*}"}
     line=${line%"${line##*[![:space:]]}"}
-    [[ -z "${line}" || "${line}" == \#* ]] && continue
-    log_info "Syncing Herdr plugin: ${line}"
-    herdr plugin install "${line}" --yes || failed_plugins+=("${line}")
+    [[ -z ${line} || ${line} == \#* ]] && continue
+    printf '%s\n' "${line}"
   done <"${plugin_file}"
-  if (( ${#failed_plugins[@]} > 0 )); then
-    die "Failed to sync Herdr plugin(s): ${failed_plugins[*]}"
-  fi
+}
+
+sync_herdr_plugins() {
+  require_command herdr
+  log_step 'Syncing Herdr plugins'
+  # Command substitution, not <(...): a die inside a process substitution
+  # would only kill the subshell and leave the sync looking successful.
+  local plugins plugin failures=()
+  plugins="$(herdr_plugins)"
+  while IFS= read -r plugin; do
+    [[ -n ${plugin} ]] || continue
+    log_info "Syncing ${plugin}"
+    herdr plugin install "${plugin}" --yes || failures+=("${plugin}")
+  done <<<"${plugins}"
+  ((${#failures[@]} == 0)) || die "Failed to sync Herdr plugin(s): ${failures[*]}"
   if herdr status server >/dev/null 2>&1; then
     herdr server reload-config >/dev/null \
       || log_warn 'Plugins synced, but the live server reload failed; restart herdr to pick them up.'
@@ -275,34 +472,51 @@ sync_herdr_plugins() {
   log_ok 'Herdr plugins are up to date.'
 }
 
+fish_path() {
+  command -v fish 2>/dev/null || die 'fish is not installed. Run ./dot init to install the bundle first.'
+}
+
 set_fish_shell() {
-  local fish_path current_shell install_user
-  command -v fish >/dev/null 2>&1 || die 'fish is not installed. Run ./dot init again to install the bundle first.'
-  fish_path="$(command -v fish)"
-  grep -Fxq "${fish_path}" /etc/shells \
-    || die "${fish_path} is missing from /etc/shells; chsh would reject it."
-  install_user="$(id -un)"
-  current_shell="$(getent passwd "${install_user}" | cut -d: -f7)"
-  if [[ ${current_shell} == "${fish_path}" ]]; then
-    log_ok "fish is already the login shell for ${install_user}."
+  local shell user current
+  shell="$(fish_path)"
+  grep -Fxq "${shell}" /etc/shells || die "${shell} is missing from /etc/shells; chsh would reject it."
+  user="$(id -un)"
+  current="$(getent passwd "${user}" | cut -d: -f7)"
+  if [[ ${current} == "${shell}" ]]; then
+    log_ok "fish is already the login shell for ${user}."
   else
-    log_step "Setting fish as the login shell for ${install_user}"
-    chsh -s "${fish_path}" "${install_user}"
-    log_warn "Login shell changed to ${fish_path}. It takes effect at the next login."
+    log_step "Setting fish as the login shell for ${user}"
+    chsh -s "${shell}" "${user}"
+    log_warn "Login shell changed to ${shell}. It takes effect at the next login."
   fi
 }
 
+# --- commands ---------------------------------------------------------------
+
 cmd_init() {
   require_user
-  require_arch
   begin_elevation
   ensure_helpers
   install_packages
-  ensure_herdr
+  install_tools
   stow_dotfiles
   sync_herdr_plugins
   set_fish_shell
   log_ok 'Init complete. Restart the terminal to load the fish configuration.'
+}
+
+cmd_update() {
+  require_user
+  require_command git
+  begin_elevation
+  log_step 'Pulling latest dotfiles'
+  git -C "${DOTFILES_DIR}" pull --rebase
+  ensure_helpers
+  install_packages
+  install_tools
+  stow_dotfiles
+  sync_herdr_plugins
+  log_ok 'Update complete.'
 }
 
 cmd_stow() {
@@ -310,275 +524,179 @@ cmd_stow() {
   stow_dotfiles
 }
 
+# Bundle entries missing from this machine, one `verb "name"` per line.
+missing_entries() {
+  local entry verb name url
+  for entry in "${BUNDLE_ENTRIES[@]}"; do
+    read -r verb name url <<<"${entry}"
+    pkg_query "${verb}" "${name}" "${url}" || printf '%s "%s"\n' "${verb}" "${name}"
+  done
+}
+
+cmd_check_packages() {
+  parse_bundle
+  local -a missing=()
+  mapfile -t missing < <(missing_entries)
+  if ((${#missing[@]} == 0)); then
+    log_ok "Bundle is fully installed (${#BUNDLE_ENTRIES[@]} entries)."
+    return 0
+  fi
+  log_warn "Missing ${#missing[@]} of ${#BUNDLE_ENTRIES[@]} bundle entries:"
+  printf '  %s\n' "${missing[@]}"
+  return 1
+}
+
 cmd_doctor() {
   local failed=0
-  require_arch
+
   log_step 'Checking helpers'
-  for cmd in yay stow fish git herdr; do
-    if command -v "${cmd}" >/dev/null 2>&1; then
-      log_ok "${cmd} found: $(command -v "${cmd}")"
-    else
-      log_error "${cmd} is missing."
-      failed=1
-    fi
+  local -a helpers=(git stow fish herdr claude)
+  [[ ${DISTRO} == arch ]] && helpers+=(yay)
+  local cmd
+  for cmd in "${helpers[@]}"; do
+    command -v "${cmd}" >/dev/null 2>&1 || { log_error "${cmd} is missing."; failed=1; }
   done
+  ((failed)) || log_ok "All helpers found: ${helpers[*]}"
 
   log_step 'Checking login shell'
-  local fish_path current_shell
-  if command -v fish >/dev/null 2>&1; then
-    fish_path="$(command -v fish)"
-    current_shell="$(getent passwd "$(id -un)" | cut -d: -f7)"
-    if [[ ${current_shell} == "${fish_path}" ]]; then
-      log_ok "Login shell is fish (${fish_path})."
-    else
-      log_error "Login shell is ${current_shell:-none}, expected ${fish_path}. Run ./dot init."
-      failed=1
-    fi
+  local shell current
+  shell="$(command -v fish 2>/dev/null || true)"
+  current="$(getent passwd "$(id -un)" | cut -d: -f7)"
+  if [[ -n ${shell} && ${current} == "${shell}" ]]; then
+    log_ok "Login shell is fish (${shell})."
   else
-    log_error 'fish is not installed.'
+    log_error "Login shell is ${current:-none}, expected fish. Run ./dot init."
     failed=1
   fi
 
   log_step 'Checking bundle packages'
   parse_bundle
-  local pkg
-  for pkg in "${REPO_PKGS[@]}" "${AUR_PKGS[@]}"; do
-    if pacman -Q -- "${pkg}" >/dev/null 2>&1; then
-      log_ok "${pkg} installed."
-    else
-      log_error "${pkg} is missing. Run ./dot init."
-      failed=1
-    fi
-  done
+  local -a missing=()
+  mapfile -t missing < <(missing_entries)
+  if ((${#missing[@]} == 0)); then
+    log_ok "Bundle is fully installed (${#BUNDLE_ENTRIES[@]} entries)."
+  else
+    log_error "Missing ${#missing[@]} bundle entries (run ./dot init):"
+    printf '  %s\n' "${missing[@]}" >&2
+    failed=1
+  fi
 
   log_step 'Checking Herdr plugins'
-  local plugin_file="${HOME_DIR}/.config/herdr/plugins.txt" plugin_line plugin_name installed_plugins
   if ! command -v herdr >/dev/null 2>&1; then
-    log_error 'herdr is missing; skipping plugin check.'
-    failed=1
-  elif [[ ! -r "${plugin_file}" ]]; then
-    log_error "Missing Herdr plugin list: ${plugin_file}."
+    log_error 'herdr is missing; skipping the plugin check.'
     failed=1
   else
-    installed_plugins="$(herdr plugin list 2>/dev/null || true)"
-    while IFS= read -r plugin_line || [[ -n "${plugin_line}" ]]; do
-      plugin_line=${plugin_line#"${plugin_line%%[![:space:]]*}"}
-      plugin_line=${plugin_line%"${plugin_line##*[![:space:]]}"}
-      [[ -z "${plugin_line}" || "${plugin_line}" == \#* ]] && continue
-      plugin_name=${plugin_line##*/}
-      if grep -Fq -- "${plugin_name}" <<<"${installed_plugins}"; then
-        log_ok "${plugin_line} installed."
-      else
-        log_error "${plugin_line} is missing. Run ./dot init."
-        failed=1
-      fi
-    done <"${plugin_file}"
+    local installed plugins plugin plugin_failed=0
+    installed="$(herdr plugin list 2>/dev/null || true)"
+    plugins="$(herdr_plugins)"
+    while IFS= read -r plugin; do
+      [[ -n ${plugin} ]] || continue
+      grep -Fq -- "${plugin##*/}" <<<"${installed}" && continue
+      log_error "${plugin} is missing. Run ./dot init."
+      plugin_failed=1
+    done <<<"${plugins}"
+    if ((plugin_failed)); then failed=1; else log_ok 'All Herdr plugins installed.'; fi
   fi
 
   log_step 'Checking stowed symlinks'
-  local source_file relative target expected actual
-  while IFS= read -r -d '' source_file; do
-    relative=${source_file#"${HOME_DIR}/"}
-    target="${HOME}/${relative}"
-    expected="$(realpath -m -- "${source_file}")"
-    if [[ -L "${target}" ]]; then
-      actual="$(realpath -m -- "${target}")" || actual=''
-      if [[ ${actual} == "${expected}" ]]; then
-        continue
-      else
-        log_error "${target} points elsewhere (expected ${expected}). Run ./dot stow."
-        failed=1
-      fi
-    elif [[ -e "${target}" ]]; then
-      log_error "${target} exists but is not a symlink. Run ./dot stow."
-      failed=1
-    else
-      log_error "${target} is missing. Run ./dot stow."
-      failed=1
+  local src rel target link_failed=0
+  while IFS= read -r -d '' src; do
+    rel=${src#"${HOME_DIR}/"}
+    target="${HOME}/${rel}"
+    if [[ ! -L ${target} ]]; then
+      log_error "${target} is not a symlink into home/. Run ./dot stow."
+      link_failed=1
+    elif [[ "$(realpath -m -- "${target}")" != "$(realpath -m -- "${src}")" ]]; then
+      log_error "${target} points elsewhere. Run ./dot stow."
+      link_failed=1
     fi
-  done < <(find "${HOME_DIR}" -mindepth 1 \( -name node_modules -o -name .gitignore \) -prune -o \( -type f -o -type l \) -print0 | sort -z)
-  if ((failed == 0)); then
-    log_ok 'All symlinks point at home/.'
-  fi
+  done < <(home_files)
+  if ((link_failed)); then failed=1; else log_ok 'All symlinks point at home/.'; fi
 
-  log_step "Checking for broken symlinks in ${HOME} (depth ≤ 3)"
-  local broken
-  broken="$(find "${HOME}" -maxdepth 3 -type l ! -exec test -e {} \; -print 2>/dev/null || true)"
-  if [[ -n "${broken}" ]]; then
-    log_warn 'Broken symlinks found (app runtime locks are normal):'
-    printf '%s\n' "${broken}" >&2
-  else
-    log_ok 'No broken symlinks.'
-  fi
-
-  if ((failed > 0)); then
-    log_error 'Doctor found problems listed above.'
-    return 1
-  fi
-  log_ok 'Doctor passed: helpers, packages, symlinks, and login shell look good.'
-}
-
-cmd_check_packages() {
-  parse_bundle
-  local pkg missing=()
-  for pkg in "${REPO_PKGS[@]}" "${AUR_PKGS[@]}"; do
-    pacman -Q -- "${pkg}" >/dev/null 2>&1 || missing+=("${pkg}")
-  done
-  if (( ${#missing[@]} == 0 )); then
-    log_ok 'All bundle packages are installed.'
-  else
-    log_warn "Missing ${#missing[@]} package(s):"
-    printf '  %s\n' "${missing[@]}"
-    return 1
-  fi
-}
-
-bundle_contains() {
-  local needle=$1 line
-  while IFS= read -r line || [[ -n "${line}" ]]; do
-    parse_bundle_line "${line}" || continue
-    if [[ "${ENTRY_NAME}" == "${needle}" ]]; then
-      printf '%s\n' "${ENTRY_VERB}"
-      return 0
-    fi
-  done <"${BUNDLE_FILE}"
-  return 1
+  ((failed == 0)) || die 'Doctor found the problems listed above.'
+  log_ok 'Doctor passed: helpers, packages, plugins, symlinks, and login shell look good.'
 }
 
 cmd_package_add() {
-  local name=${1:-} scope='repo' arg
+  local name=${1:-} verb='repo' url='' flag
   shift || true
-  [[ -n "${name}" ]] || die 'Usage: ./dot package add NAME [--aur]'
-  for arg in "$@"; do
-    case "${arg}" in
-      --aur | -a) scope='aur' ;;
-      *) die "Unknown flag for package add: ${arg}" ;;
-    esac
+  [[ -n ${name} ]] || die 'Usage: ./dot package add NAME|URL [--aur|--rpm|--repofile|--copr|--flatpak|--appimage|--npm]'
+  # A flag names the bundle verb; require_verb_for_distro rejects the ones
+  # this distro cannot use.
+  for flag in "$@"; do
+    [[ ${flag} == --* ]] || die "Unexpected argument for package add: ${flag}"
+    verb=${flag#--}
+    require_verb_for_distro "${verb}"
   done
+  case "${verb}" in
+    rpm | appimage)
+      # These take the URL and record `verb "name" "URL"`, so the name is
+      # resolved once, here, instead of guessed at every query.
+      [[ ${name} == https://* ]] || die "${verb} entries need an https URL; got: ${name}"
+      url=${name}
+      if [[ ${verb} == appimage ]]; then
+        [[ ${url} == *.AppImage ]] || die "appimage entries need a URL ending in .AppImage; got: ${url}"
+        name="$(appimage_app "${url}")"
+      else
+        require_command rpm
+        name="$(rpm -q --qf '%{NAME}' -p "${url}" 2>/dev/null)" \
+          || die "Could not read the package name from ${url}. Check the URL, or add the entry to the bundle by hand."
+      fi
+      [[ -n ${name} ]] || die "Could not derive a name from ${url}."
+      log_info "Recording ${verb} \"${name}\" from ${url}"
+      ;;
+    repofile)
+      [[ ${name} == https://* ]] || die "repofile entries need an https URL; got: ${name}"
+      ;;
+    flatpak)
+      [[ ${name} =~ ^[A-Za-z0-9._-]+$ ]] \
+        || die "flatpak entries need a Flathub app id (e.g. com.example.App); got: ${name}"
+      ;;
+    *)
+      [[ ${name} =~ ^[@A-Za-z0-9._/+-]+$ ]] || die "Invalid ${verb} entry name: ${name}"
+      ;;
+  esac
   require_user
+  parse_bundle
   local existing
-  if existing="$(bundle_contains "${name}")"; then
+  if existing="$(bundle_verb_of "${name}")"; then
     die "'${name}' is already in the bundle as ${existing}."
   fi
   # Install first so a failed install cannot leave a phantom bundle entry.
-  log_step "Installing ${scope} \"${name}\""
-  pkg_install "${scope}" "${name}"
-  printf '%s "%s"\n' "${scope}" "${name}" >>"${BUNDLE_FILE}"
-  log_ok "Added ${scope} \"${name}\" to packages/bundle."
+  log_step "Installing ${verb} \"${name}\""
+  pkg_install "${verb}" "${name}" "${url}"
+  if [[ -n ${url} ]]; then
+    printf '%s "%s" "%s"\n' "${verb}" "${name}" "${url}" >>"${BUNDLE_FILE}"
+  else
+    printf '%s "%s"\n' "${verb}" "${name}" >>"${BUNDLE_FILE}"
+  fi
+  log_ok "Added ${verb} \"${name}\" to ${BUNDLE_FILE#"${DOTFILES_DIR}/"}. Give it a trailing # purpose comment."
 }
 
 cmd_package_remove() {
   local name=${1:-}
-  [[ -n "${name}" ]] || die 'Usage: ./dot package remove NAME'
+  [[ -n ${name} ]] || die 'Usage: ./dot package remove NAME'
   require_user
-  local scope tmp
-  scope="$(bundle_contains "${name}")" \
-    || die "'${name}' is not in packages/bundle."
-  # Rewrite via temp file beside the bundle + atomic rename, so a crash
-  # can never truncate packages/bundle. Lines pass through byte-identical
-  # except the one matching entry, which shares parse_bundle's normalizer.
+  parse_bundle
+  local verb tmp line url=''
+  verb="$(bundle_verb_of "${name}")" || die "'${name}' is not in ${BUNDLE_FILE#"${DOTFILES_DIR}/"}."
+  # Rewrite through a temp file beside the bundle, then rename: a crash can
+  # never truncate the bundle. Every line but the match passes through
+  # byte-identical.
   tmp="$(mktemp "${BUNDLE_FILE}.tmp.XXXXXX")"
   CLEANUP_PATH=${tmp}
-  local line
-  while IFS= read -r line || [[ -n "${line}" ]]; do
-    if parse_bundle_line "${line}" \
-      && [[ "${ENTRY_VERB}" == "${scope}" && "${ENTRY_NAME}" == "${name}" ]]; then
+  while IFS= read -r line || [[ -n ${line} ]]; do
+    if parse_bundle_line "${line}" && [[ ${ENTRY_VERB} == "${verb}" && ${ENTRY_NAME} == "${name}" ]]; then
+      url=${ENTRY_URL}
       continue
     fi
     printf '%s\n' "${line}"
   done <"${BUNDLE_FILE}" >"${tmp}"
   mv -- "${tmp}" "${BUNDLE_FILE}"
   CLEANUP_PATH=''
-  log_ok "Removed ${scope} \"${name}\" from packages/bundle."
+  log_ok "Removed ${verb} \"${name}\" from ${BUNDLE_FILE#"${DOTFILES_DIR}/"}."
   log_step "Uninstalling ${name}"
-  if [[ "${scope}" == repo ]]; then
-    sudo pacman -Rns --noconfirm -- "${name}" || log_warn "pacman could not remove ${name} (maybe a dependency)."
-  else
-    yay -Rns --noconfirm -- "${name}" || log_warn "yay could not remove ${name}."
-  fi
-}
-
-cmd_package_list() {
-  cat -- "${BUNDLE_FILE}"
-}
-
-cmd_benchmark_shell() {
-  command -v fish >/dev/null 2>&1 || die 'fish is not installed.'
-  local runs=10 verbose=0
-  while (($# > 0)); do
-    case "$1" in
-      -r | --runs)
-        [[ $# -ge 2 ]] || die 'Usage: ./dot benchmark-shell [-r RUNS] [-v]'
-        runs=$2
-        shift 2
-        ;;
-      -v | --verbose)
-        verbose=1
-        shift
-        ;;
-      -h | --help)
-        cat <<'EOF'
-Usage: ./dot benchmark-shell [-r RUNS] [-v]
-
-  -r, --runs NUM   Number of startup runs, 1-100 (default: 10)
-  -v, --verbose    Show each run timing
-EOF
-        return 0
-        ;;
-      *)
-        die "Unknown option: $1. See ./dot benchmark-shell --help."
-        ;;
-    esac
-  done
-  if ! [[ "${runs}" =~ ^[0-9]+$ ]] || ((runs < 1 || runs > 100)); then
-    die 'Number of runs must be between 1 and 100.'
-  fi
-  log_step "Benchmarking fish startup (${runs} runs of an empty script)"
-  local temp_script
-  temp_script="$(mktemp -t dot-fish-benchmark-XXXXXX.fish)" \
-    || die 'Failed to create temp file.'
-  CLEANUP_PATH=${temp_script}
-  echo 'exit 0' >"${temp_script}"
-  local -a times=()
-  local total=0 elapsed i
-  for ((i = 1; i <= runs; i++)); do
-    # Temp path travels via argv (sys.argv/@ARGV), never embedded in code,
-    # so no quoting layer can turn it into a literal string.
-    if command -v python3 >/dev/null 2>&1; then
-      elapsed="$(python3 -c 'import sys,time,subprocess; s=time.time(); subprocess.run(["fish",sys.argv[1]],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL); print(f"{time.time()-s:.3f}")' "${temp_script}")"
-    elif command -v perl >/dev/null 2>&1; then
-      elapsed="$(perl -MTime::HiRes=time -e '$s=time(); system("fish",$ARGV[0]); printf "%.3f",time()-$s' "${temp_script}" 2>/dev/null)"
-    else
-      SECONDS=0
-      fish "${temp_script}" >/dev/null 2>&1
-      elapsed="${SECONDS}"
-      [[ "${elapsed}" == 0 ]] && elapsed='0.001'
-    fi
-    [[ "${elapsed}" =~ ^[0-9]*\.?[0-9]+$ ]] || elapsed='0.001'
-    times+=("${elapsed}")
-    total="$(awk -v a="${total}" -v b="${elapsed}" 'BEGIN { printf "%.3f", a + b }')"
-    ((verbose)) && printf '  Run %2d: %.3f seconds\n' "${i}" "${elapsed}"
-  done
-  rm -f -- "${temp_script}"
-  CLEANUP_PATH=''
-  local avg min max
-  avg="$(awk -v t="${total}" -v n="${runs}" 'BEGIN { printf "%.3f", t / n }')"
-  min=${times[0]} max=${times[0]}
-  local t
-  for t in "${times[@]}"; do
-    [[ $(awk -v a="${t}" -v b="${min}" 'BEGIN { print (a < b) }') == 1 ]] && min=${t}
-    [[ $(awk -v a="${t}" -v b="${max}" 'BEGIN { print (a > b) }') == 1 ]] && max=${t}
-  done
-  log_ok "fish ${C_BOLD}$(fish --version)${C_RESET}: avg ${avg}s, fastest ${min}s, slowest ${max}s over ${runs} runs."
-  if [[ $(awk -v a="${avg}" 'BEGIN { print (a <= 0.050) }') == 1 ]]; then
-    log_ok 'Excellent startup performance (≤50ms).'
-  elif [[ $(awk -v a="${avg}" 'BEGIN { print (a <= 0.100) }') == 1 ]]; then
-    log_ok 'Good startup performance (≤100ms).'
-  elif [[ $(awk -v a="${avg}" 'BEGIN { print (a <= 0.200) }') == 1 ]]; then
-    log_warn 'Fair startup performance (≤200ms).'
-  else
-    log_warn 'Slow startup (>200ms). Check conf.d additions and starship timeout.'
-  fi
+  pkg_remove "${verb}" "${name}" "${url}"
 }
 
 cmd_package() {
@@ -587,43 +705,60 @@ cmd_package() {
   case "${sub}" in
     add) cmd_package_add "$@" ;;
     remove | rm) cmd_package_remove "$@" ;;
-    list | ls) cmd_package_list ;;
-    help | -h | --help) cat <<'EOF'
-Usage:
-  ./dot package add NAME [--aur]   add to bundle and install
-  ./dot package remove NAME        remove from bundle and uninstall
-  ./dot package list               show the bundle file
-EOF
-      ;;
-    *) die "Unknown package subcommand: ${sub}. See ./dot package help." ;;
+    list | ls) cat -- "${BUNDLE_FILE}" ;;
+    *) die "Unknown package subcommand: ${sub}. See ./dot help." ;;
   esac
 }
 
-cmd_update() {
-  require_user
-  require_arch
-  require_command git
-  begin_elevation
-  log_step 'Pulling latest dotfiles'
-  git -C "${DOTFILES_DIR}" pull --rebase
-  ensure_helpers
-  install_packages
-  ensure_herdr
-  stow_dotfiles
-  sync_herdr_plugins
-  log_ok 'Update complete.'
+# Time non-interactive fish startup: config.fish is sourced, the greeting and
+# prompt are not.
+cmd_benchmark_shell() {
+  local runs=10
+  while (($# > 0)); do
+    case "$1" in
+      -r | --runs)
+        runs=${2:-}
+        shift 2 || die 'Usage: ./dot benchmark-shell [-r RUNS]'
+        ;;
+      *) die "Unknown option: $1. Usage: ./dot benchmark-shell [-r RUNS]" ;;
+    esac
+  done
+  if ! [[ ${runs} =~ ^[0-9]+$ ]] || ((runs < 1 || runs > 100)); then
+    die 'Runs must be between 1 and 100.'
+  fi
+  local shell
+  shell="$(fish_path)"
+  [[ -n ${EPOCHREALTIME:-} ]] || die 'benchmark-shell needs bash 5 or newer.'
+  log_step "Benchmarking fish startup (${runs} runs)"
+  # EPOCHREALTIME is microseconds since the epoch (with a locale-dependent
+  # decimal separator), which keeps this to integer shell math.
+  local i start us total=0 min=0 max=0
+  for ((i = 1; i <= runs; i++)); do
+    start=${EPOCHREALTIME//[^0-9]/}
+    "${shell}" -c 'exit 0' >/dev/null 2>&1
+    us=$((${EPOCHREALTIME//[^0-9]/} - start))
+    total=$((total + us))
+    ((min == 0 || us < min)) && min=${us}
+    ((us > max)) && max=${us}
+    true
+  done
+  local avg=$((total / runs))
+  log_ok "fish startup: avg $((avg / 1000)).$((avg % 1000 / 10))ms, fastest $((min / 1000))ms, slowest $((max / 1000))ms over ${runs} runs."
+  if ((avg > 100000)); then
+    log_warn 'Above 100ms — check fish conf.d additions and the starship timeout.'
+  fi
 }
 
 main() {
   local cmd=${1:-help}
   shift || true
   case "${cmd}" in
-    init) cmd_init "$@" ;;
+    init) detect_distro; cmd_init "$@" ;;
+    update) detect_distro; cmd_update "$@" ;;
     stow) cmd_stow "$@" ;;
-    doctor) cmd_doctor "$@" ;;
-    check-packages) cmd_check_packages "$@" ;;
-    package) cmd_package "$@" ;;
-    update) cmd_update "$@" ;;
+    doctor) detect_distro; cmd_doctor "$@" ;;
+    check-packages) detect_distro; cmd_check_packages "$@" ;;
+    package) detect_distro; cmd_package "$@" ;;
     benchmark-shell) cmd_benchmark_shell "$@" ;;
     help | -h | --help) usage ;;
     *) die "Unknown command: ${cmd}. See ./dot help." ;;

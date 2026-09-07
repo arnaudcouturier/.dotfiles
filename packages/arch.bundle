@@ -1,0 +1,49 @@
+# Arch package bundle. `dot` installs every entry; `dot package add/remove`
+# edits this file. Trailing # comments say why the entry is here.
+#
+#   repo "name"            official repositories, installed with pacman
+#   aur "name"             AUR, installed with yay (dot init bootstraps yay)
+#   appimage "Name" "URL"  official AppImage into ~/Applications — a last
+#                          resort here, since the AUR usually has a package
+#
+# repo beats aur when both carry a package. Names are never translated to or
+# from fedora.bundle.
+
+# Shell toolchain (dot init also makes fish the login shell)
+repo "fish" # friendly interactive shell
+repo "starship" # prompt
+repo "eza" # modern ls replacement
+repo "zoxide" # smarter cd
+repo "fzf" # fuzzy finder
+repo "fd" # modern find replacement used by fzf
+repo "ripgrep" # fast code search
+repo "bat" # cat with syntax highlighting
+repo "direnv" # per-directory env (hooked in fish config, idle without .envrc)
+
+# Plumbing for these dotfiles
+repo "stow" # GNU Stow, deploys home/ via symlinks
+repo "shellcheck" # linter for the dot script
+repo "base-devel" # makepkg toolchain for AUR builds; no-op if already present
+repo "fastfetch" # minimalist system info shown in the fish greeting
+
+# Applications from the official repositories
+repo "github-cli" # GitHub CLI
+repo "obsidian" # Obsidian notes (packaged here; Fedora uses the AppImage)
+repo "qbittorrent" # BitTorrent client
+repo "mullvad-vpn" # Mullvad VPN client
+repo "nextcloud-client" # Nextcloud desktop file-sync client
+repo "tailscale" # mesh VPN
+repo "openai-codex" # OpenAI Codex CLI
+
+# Applications from the AUR
+aur "pi-coding-agent-bin" # pi coding agent CLI (prebuilt, no source build)
+aur "claude-code" # Anthropic's Claude Code agent CLI
+aur "brave-origin-bin" # Brave Origin, the system's Chromium-based browser
+aur "keeper-password-manager" # Keeper password manager
+aur "proton-mail-bin" # Proton Mail and Calendar (the source build's sharp
+                      # dependency fails under yarn's node-gyp, so this is the
+                      # repack of Proton's own build)
+aur "equibop" # Equibop Discord client
+aur "chatgpt-desktop" # ChatGPT desktop app (repack of OpenAI's Linux binary)
+
+# herdr is installed by dot itself, using its vendor's installer.
