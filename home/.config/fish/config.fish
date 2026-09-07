@@ -1,3 +1,7 @@
+# herdr and Claude Code install here on Fedora, and fish never reads
+# /etc/profile, where Fedora adds this for bash. Idempotent, skipped if absent.
+fish_add_path -g ~/.local/bin
+
 if status is-interactive
     if type -q starship
         starship init fish | source

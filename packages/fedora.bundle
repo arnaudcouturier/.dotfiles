@@ -54,6 +54,7 @@ repo "nodejs" # Node.js runtime
 repo "nodejs-npm" # npm package manager (Fedora's package name; it only *provides* "npm", and rpm -q matches names)
 npm "@earendil-works/pi-coding-agent" # pi coding agent CLI
 npm "@openai/codex" # OpenAI Codex CLI
+npm "@opencode-ai/cli@beta" # opencode2 (the @opencode/cli scope is an empty placeholder with no beta tag)
 # Claude Code is installed by dot itself, and herdr on both distros: their
 # vendors' installers are the supported route (npm is deprecated for Claude).
 
