@@ -1,0 +1,4 @@
+# npm / build artifacts from home/.pi extension workspaces.
+home/.pi/**/node_modules/
+*.tsbuildinfo
+npm-debug.log*

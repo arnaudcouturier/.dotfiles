@@ -1,0 +1,43 @@
+# See https://git-scm.com/docs/git-config
+# Portable speed/sanity wins (fetch.prune, rebase.updateRefs, core.fsmonitor).
+# Identity and credential helpers below are this machine's own.
+
+[alias]
+	co = checkout
+	br = branch
+	ci = commit
+	st = status
+[init]
+	defaultBranch = main
+[pull]
+	rebase = true 			 # Rebase (instead of merge) on pull
+[push]
+	autoSetupRemote = true   # Automatically set upstream branch on push
+[diff]
+	algorithm = histogram    # Clearer diffs on moved/edited lines
+	colorMoved = plain       # Highlight moved blocks in diff output
+	mnemonicPrefix = true    # More intuitive refs in diff output
+[column]
+	ui = auto 			     # Output in columns when possible
+[branch]
+	sort = -committerdate    # Sort branches by most recent commit first
+[tag]
+	sort = -version:refname  # Sort version numbers as you would expect
+[rerere]
+	enabled = true           # Record and reuse conflict resolutions
+	autoupdate = true        # Apply stored conflict resolutions automatically
+[fetch]
+	prune = true             # Drop deleted remote branches on fetch
+[rebase]
+	updateRefs = true        # Keep stacked branch refs current on rebase
+[core]
+	fsmonitor = true         # Faster status in large repos (built-in watcher)
+[user]
+	name = Arnaud Couturier
+	email = arnaud@arenwald.com
+[credential "https://github.com"]
+	helper =
+	helper = !gh auth git-credential
+[credential "https://gist.github.com"]
+	helper =
+	helper = !gh auth git-credential

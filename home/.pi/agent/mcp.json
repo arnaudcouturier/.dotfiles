@@ -1,0 +1,17 @@
+{
+  "mcp": {
+    "toolMode": "proxy",
+    "startup": "lazy",
+    "servers": {
+      "computer": {
+        "type": "local",
+        "command": [
+          "open-computer-use",
+          "mcp"
+        ],
+        "enabled": true,
+        "timeout": 60000
+      }
+    }
+  }
+}
