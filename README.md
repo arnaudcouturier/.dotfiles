@@ -73,7 +73,7 @@ Names are never translated between distros (`fd` vs `fd-find`, `github-cli` vs
   has an NVIDIA GPU.
 - `packages/*.bundle` — one package list per distro.
 - `home/` — mirrors `$HOME`, linked in by Stow: fish, Starship, Git, herdr,
-  fastfetch, ripgrep, Hyprland input, agent skills, pi config, wallpapers.
+  fastfetch, ripgrep, Hyprland input, Ghostty, agent skills, pi config, wallpapers.
   Edit here, never `~` directly, then run `./dot stow`.
 
 herdr plugins are one `owner/repo` per line in
