@@ -496,10 +496,10 @@ has_nvidia_gpu() {
 }
 
 # The proprietary NVIDIA drivers, following
-# https://docs.fedoraproject.org/en-US/gaming/drivers/ to the letter: rpm
-# Fusion's free and nonfree release packages, then akmod-nvidia. Fedora only,
-# and a no-op without NVIDIA hardware, so machines with other GPUs pay for
-# one lspci call.
+# https://docs.fedoraproject.org/en-US/gaming/drivers/ to the letter: a full
+# system upgrade first, then rpm Fusion's free and nonfree release packages,
+# then akmod-nvidia. Fedora only, and a no-op without NVIDIA hardware, so
+# machines with other GPUs pay for one lspci call.
 ensure_nvidia() {
   [[ ${DISTRO} == fedora ]] || return 0
   has_nvidia_gpu || return 0
@@ -508,6 +508,11 @@ ensure_nvidia() {
     return 0
   fi
   log_step 'NVIDIA GPU found; installing the proprietary drivers per docs.fedoraproject.org/en-US/gaming/drivers/'
+  # Upgrade before the driver: on a fresh install the kernel and its headers
+  # lag the repos, and akmod-nvidia would build against that stale kernel and
+  # come up incomplete. (dnf update and upgrade are the same operation, so one
+  # run covers both.)
+  sudo dnf upgrade -y
   sudo dnf install -y \
     "https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm" \
     "https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm"

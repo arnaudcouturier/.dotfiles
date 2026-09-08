@@ -30,8 +30,9 @@ usage; these are the rules that are easy to break.
   partially upgraded system; don't weaken it to `-S`.
 - **NVIDIA handling is hardware-conditional.** `ensure_nvidia` (init/update, or
   `./dot nvidia`) detects a PCI vendor-10de device with one lspci call and, on
-  a hit, follows the Fedora gaming docs (rpmfusion release packages +
-  akmod-nvidia). It is a silent no-op otherwise; keep it that way.
+  a hit, follows the Fedora gaming docs (system upgrade, then rpmfusion release
+  packages + akmod-nvidia — a driver built against a fresh install's stale
+  kernel comes up incomplete). It is a silent no-op otherwise; keep it that way.
 - **Elevation is terminal sudo only.** `init`/`update` authenticate once and
   refresh in the background. No pkexec, no NOPASSWD, no `sudo -A`. Don't call
   `sudo` from an agent shell — let `dot` do it.

@@ -68,9 +68,9 @@ Names are never translated between distros (`fd` vs `fd-find`, `github-cli` vs
 ## Layout
 
 - `dot` — the CLI; all installation logic lives here. NVIDIA drivers are
-  hardware-conditional: `./dot nvidia` (also part of init/update) installs
-  rpmfusion and akmod-nvidia per the Fedora gaming docs only when the machine
-  has an NVIDIA GPU.
+  hardware-conditional: `./dot nvidia` (also part of init/update) upgrades the
+  system, then installs rpmfusion and akmod-nvidia per the Fedora gaming docs,
+  only when the machine has an NVIDIA GPU.
 - `packages/*.bundle` — one package list per distro.
 - `home/` — mirrors `$HOME`, linked in by Stow: fish, Starship, Git, herdr,
   fastfetch, ripgrep, Hyprland input, Ghostty, agent skills, pi config, wallpapers.

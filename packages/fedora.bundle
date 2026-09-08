@@ -72,6 +72,6 @@ npm-scripts "bun" # JavaScript runtime for Herdr Annotate's capture/manage actio
 # vendors' installers are the supported route (npm is deprecated for Claude).
 #
 # NVIDIA drivers are hardware-conditional and live in dot itself:
-# ensure_nvidia installs rpmfusion and akmod-nvidia per
+# ensure_nvidia upgrades the system, then installs rpmfusion and akmod-nvidia per
 # docs.fedoraproject.org/en-US/gaming/drivers/ only when lspci finds NVIDIA
 # hardware (run `./dot nvidia` to do it standalone).
