@@ -35,6 +35,7 @@ repo "fastfetch" # minimalist system info shown in the fish greeting
 
 # Applications from the Fedora repositories
 repo "gh" # GitHub CLI (Arch name: github-cli)
+repo "neovim" # Neovim editor (the LazyVim starter config lives in home/.config/nvim)
 repo "qbittorrent" # BitTorrent client
 repo "nextcloud-client" # Nextcloud desktop file-sync client
 
@@ -46,23 +47,29 @@ repo "mullvad-vpn" # Mullvad VPN client
 repofile "https://brave-browser-rpm-release.s3.brave.com/brave-browser.repo" # Brave's official repo
 repo "brave-origin" # Brave Origin, the system's Chromium-based browser
 
-# Pinned official downloads — bump the URL to update
+# Pinned official downloads; dot reads each URL's build out of the package
+# header and compares it against the installed one on every run, so a bumped
+# URL — or a rolling "latest" one — updates on the next ./dot update
 rpm "keeperpasswordmanager" "https://download.keepersecurity.com/desktop_electron/Linux/repo/rpm/keeperpasswordmanager-18.6.1-1.x86_64.rpm" # Keeper password manager (vendor RPM repo ships no .repo file)
 rpm "proton-mail" "https://proton.me/download/mail/linux/1.13.4/ProtonMail-desktop-beta.rpm" # Proton Mail and Calendar (stable channel; the file name says beta, the channel does not)
 rpm "equibop" "https://github.com/Equicord/Equibop/releases/download/v3.3.0/equibop-3.3.0.x86_64.rpm" # Equibop Discord client, from the Equicord project's own release
+rpm "chatgpt" "https://persistent.oaistatic.com/codex-app-prod/linux/rpm/latest/chatgpt.x86_64.rpm" # ChatGPT desktop, OpenAI's own RPM — a rolling "latest" build whose %post also sets up OpenAI's official repo, so later updates flow through dnf
 
 # Flathub — vendor-verified builds that update through flatpak
 repo "flatpak" # the flatpak client itself (Workstation ships it; a fresh install may not)
 flatpak "md.obsidian.Obsidian" # Obsidian notes (Flathub build, verified by the Obsidian team)
+flatpak "com.spotify.Client" # Spotify (Flathub build, verified by Spotify)
 
 # AI agent CLIs
-repo "nodejs" # Node.js runtime
-repo "nodejs-npm" # npm package manager (Fedora's package name; it only *provides* "npm", and rpm -q matches names)
+repo "nodejs22-bin" # Node.js runtime (Fedora 44 ships parallel-installable nodejsNN-bin stacks, no unversioned nodejs; this is the node 22 LTS the machine runs)
+repo "nodejs22-npm-bin" # npm, paired with nodejs22-bin (the two own node and npm on PATH)
 npm "@earendil-works/pi-coding-agent" # pi coding agent CLI
 npm "@openai/codex" # OpenAI Codex CLI
 npm-scripts "@opencode-ai/cli@beta" # opencode2 (the @opencode/cli scope is an empty placeholder with no beta tag; its postinstall fetches the platform binary, and without it the CLI is a stub that refuses to run)
 # Claude Code is installed by dot itself, and herdr on both distros: their
 # vendors' installers are the supported route (npm is deprecated for Claude).
-
-# Open: ChatGPT desktop. OpenAI ships Linux as a .deb only and Flathub has no
-# official app, so there is no verified Fedora route. Use chatgpt.com for now.
+#
+# NVIDIA drivers are hardware-conditional and live in dot itself:
+# ensure_nvidia installs rpmfusion and akmod-nvidia per
+# docs.fedoraproject.org/en-US/gaming/drivers/ only when lspci finds NVIDIA
+# hardware (run `./dot nvidia` to do it standalone).
