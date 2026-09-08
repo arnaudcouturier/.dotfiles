@@ -35,6 +35,7 @@ dot — install packages and link dotfiles on Arch and Fedora.
 
   ./dot init             helpers, packages, herdr, stow, plugins, fish shell
   ./dot update           git pull --rebase, then everything init does
+  ./dot nvidia           install the NVIDIA drivers if this machine has one (Fedora)
   ./dot stow             (re)link home/ into $HOME, overwriting conflicts
   ./dot doctor           check helpers, packages, plugins, symlinks, shell
   ./dot check-packages   list bundle entries missing from this machine
@@ -239,6 +240,22 @@ Terminal=false
 EOF
 }
 
+# The version-release the build at an rpm URL serves, read out of the package
+# header. The header sits at the front of the file, so a short ranged
+# download answers without fetching the whole (100MB+) package; 2MB covers
+# even the chatgpt RPM's oversized header. No output means the URL is
+# unreadable (offline, CDN without range support) and callers fall back.
+rpm_url_evr() {
+  local url=$1 tmp
+  tmp="$(mktemp "${TMPDIR:-/tmp}/rpm-url-evr.XXXXXX")" || return 1
+  curl -fsL --range 0-2097151 --max-filesize 4194304 --retry 3 -o "${tmp}" "${url}" \
+    || { rm -f -- "${tmp}"; return 1; }
+  rpm -qp --qf '%{VERSION}-%{RELEASE}' -- "${tmp}" 2>/dev/null
+  local rc=$?
+  rm -f -- "${tmp}"
+  ((rc == 0)) || return 1
+}
+
 # Is this entry installed? repofile and copr configure sources rather than
 # install anything, so they report installed and are skipped by the checks.
 pkg_query() {
@@ -286,8 +303,27 @@ pkg_install() {
       ;;
     rpm)
       # dnf has to download the package before it can tell the pinned build is
-      # already installed, so ask rpm first — these are 100MB+ each.
-      pkg_query rpm "${name}" && return 0
+      # already installed, and these are 100MB+ each, so ask rpm first. When
+      # the name is installed, compare its version-release against the build
+      # the URL serves: that is what lets a bumped URL, or a rolling "latest"
+      # one, update on the next run instead of skipping forever.
+      if pkg_query rpm "${name}"; then
+        local installed_evr url_evr
+        installed_evr="$(rpm -q --qf '%{VERSION}-%{RELEASE}' -- "${name}")"
+        url_evr="$(rpm_url_evr "${url}")" || url_evr=''
+        if [[ -z ${url_evr} ]]; then
+          log_info "Cannot read the build ${url} serves; leaving installed ${name}-${installed_evr} alone."
+          return 0
+        fi
+        # rpm's own comparator: -1 the URL is older, 0 equal, 1 newer.
+        case "$(rpm --eval "%{lua: print(rpm.vercmp('${url_evr}', '${installed_evr}'))}")" in
+          1) log_info "${name}: ${url##*/} is newer than the installed ${installed_evr}." ;;
+          *)
+            log_info "${name} ${installed_evr} is already the build ${url} serves."
+            return 0
+            ;;
+        esac
+      fi
       sudo dnf install -y "${url}"
       ;;
     repofile) sudo dnf config-manager addrepo --from-repofile="${name}" --overwrite ;;
@@ -449,6 +485,49 @@ install_tools() {
   ensure_upstream herdr https://herdr.dev/install.sh
 }
 
+# --- nvidia -----------------------------------------------------------------
+
+# The entire detection: does lspci list a PCI device from NVIDIA (vendor
+# 10de)? It answers in milliseconds, and a missing lspci or an empty list
+# means there is nothing to do.
+has_nvidia_gpu() {
+  command -v lspci >/dev/null 2>&1 || return 1
+  lspci -d 10de: 2>/dev/null | grep -q .
+}
+
+# The proprietary NVIDIA drivers, following
+# https://docs.fedoraproject.org/en-US/gaming/drivers/ to the letter: rpm
+# Fusion's free and nonfree release packages, then akmod-nvidia. Fedora only,
+# and a no-op without NVIDIA hardware, so machines with other GPUs pay for
+# one lspci call.
+ensure_nvidia() {
+  [[ ${DISTRO} == fedora ]] || return 0
+  has_nvidia_gpu || return 0
+  if command -v nvidia-smi >/dev/null 2>&1 || rpm -q akmod-nvidia >/dev/null 2>&1; then
+    log_ok 'NVIDIA drivers already installed.'
+    return 0
+  fi
+  log_step 'NVIDIA GPU found; installing the proprietary drivers per docs.fedoraproject.org/en-US/gaming/drivers/'
+  sudo dnf install -y \
+    "https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm" \
+    "https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm"
+  sudo dnf install -y akmod-nvidia
+  # The docs warn that the driver builds after install: akmod-nvidia compiles
+  # the kernel module in the background, and a reboot mid-build loads none.
+  log_warn 'The NVIDIA kernel module is still building. Give it a few minutes (check: modinfo nvidia), then reboot to load the driver.'
+}
+
+cmd_nvidia() {
+  [[ ${DISTRO} == fedora ]] || die 'NVIDIA handling is Fedora-only.'
+  require_user
+  if ! has_nvidia_gpu; then
+    log_ok 'No NVIDIA GPU detected; nothing to do.'
+    return 0
+  fi
+  begin_elevation
+  ensure_nvidia
+}
+
 # --- dotfiles ---------------------------------------------------------------
 
 # Every file and symlink under home/, NUL-separated, in stable order.
@@ -541,6 +620,7 @@ cmd_init() {
   ensure_helpers
   install_packages
   install_tools
+  ensure_nvidia
   stow_dotfiles
   sync_herdr_plugins
   set_fish_shell
@@ -556,6 +636,7 @@ cmd_update() {
   ensure_helpers
   install_packages
   install_tools
+  ensure_nvidia
   stow_dotfiles
   sync_herdr_plugins
   log_ok 'Update complete.'
@@ -796,6 +877,7 @@ main() {
   case "${cmd}" in
     init) detect_distro; cmd_init "$@" ;;
     update) detect_distro; cmd_update "$@" ;;
+    nvidia) detect_distro; cmd_nvidia "$@" ;;
     stow) cmd_stow "$@" ;;
     doctor) detect_distro; cmd_doctor "$@" ;;
     check-packages) detect_distro; cmd_check_packages "$@" ;;

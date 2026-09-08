@@ -52,10 +52,14 @@ npm-scripts "package"   global npm package whose postinstall must run (Fedora)
 
 `dot package add NAME` installs it and records it; a `--verb` flag picks
 anything other than `repo`. Pass the URL for `rpm` and `appimage` — they
-resolve the package name themselves, because the URL does not reveal it. Bump
-a pinned URL to update; everything else updates through its own package
-manager. Flatpak is for vendor-verified Flathub builds an app ships nowhere
-else — Obsidian on Fedora is the one. `npm` installs with `--ignore-scripts`;
+resolve the package name themselves, because the URL does not reveal it.
+dot reads each pinned URL's build out of the package header and compares it
+against the installed one, so bumping a URL — or a rolling "latest" one, as
+ChatGPT's is — updates on the next `./dot update`; everything else updates
+through its own package manager. ChatGPT's RPM also sets up OpenAI's own
+repository on install, so plain dnf updates find it too. Flatpak is for
+vendor-verified Flathub builds an app ships nowhere else — Obsidian and
+Spotify on Fedora are the ones. `npm` installs with `--ignore-scripts`;
 `npm-scripts` is the exemption for a package whose postinstall is the install.
 
 Names are never translated between distros (`fd` vs `fd-find`, `github-cli` vs
@@ -63,7 +67,10 @@ Names are never translated between distros (`fd` vs `fd-find`, `github-cli` vs
 
 ## Layout
 
-- `dot` — the CLI; all installation logic lives here.
+- `dot` — the CLI; all installation logic lives here. NVIDIA drivers are
+  hardware-conditional: `./dot nvidia` (also part of init/update) installs
+  rpmfusion and akmod-nvidia per the Fedora gaming docs only when the machine
+  has an NVIDIA GPU.
 - `packages/*.bundle` — one package list per distro.
 - `home/` — mirrors `$HOME`, linked in by Stow: fish, Starship, Git, herdr,
   fastfetch, ripgrep, Hyprland input, agent skills, pi config, wallpapers.

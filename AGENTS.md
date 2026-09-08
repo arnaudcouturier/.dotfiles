@@ -28,6 +28,10 @@ usage; these are the rules that are easy to break.
   `rpm -q --qf '%{NAME}' -p <URL>`.
 - **Arch installs run `pacman -Syu`.** Arch does not support installing into a
   partially upgraded system; don't weaken it to `-S`.
+- **NVIDIA handling is hardware-conditional.** `ensure_nvidia` (init/update, or
+  `./dot nvidia`) detects a PCI vendor-10de device with one lspci call and, on
+  a hit, follows the Fedora gaming docs (rpmfusion release packages +
+  akmod-nvidia). It is a silent no-op otherwise; keep it that way.
 - **Elevation is terminal sudo only.** `init`/`update` authenticate once and
   refresh in the background. No pkexec, no NOPASSWD, no `sudo -A`. Don't call
   `sudo` from an agent shell — let `dot` do it.
