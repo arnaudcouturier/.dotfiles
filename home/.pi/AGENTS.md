@@ -15,7 +15,6 @@ https://github.com/dmmulroy/.dotfiles; only the generic extensions were kept
 │   ├── auth.json         # NOT tracked: never commit credentials
 │   ├── mcp.json          # Tracked: local `computer` server (needs `open-computer-use`)
 │   ├── cloak.json        # Tracked: secret masking patterns for agent output
-│   ├── themes/           # Tracked: catppuccin-macchiato theme
 │   └── extensions/       # Tracked: local TypeScript extensions
 │       ├── save-md/              # /save-md: save last answer as Markdown
 │       ├── pi-skill-toggle/      # Skill discovery + toggle UI
