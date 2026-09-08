@@ -20,7 +20,9 @@ Deliberately excluded: coding-standards (TypeScript/Effect) and
 cloudflare-composition-root (Cloudflare Workers) — not our stack.
 
 Caveats: computer-use-mcp assumes macOS Helium (`net.imput.helium`) and an
-`open-computer-use` MCP server; plannotator-tui needs the `plannotator-tui`
-binary (his personal tap, no Arch package); workday-training needs
+`open-computer-use` MCP server; plannotator-tui reviews run through the
+herdr-annotate plugin (home/.config/herdr/plugins.txt), which bundles its own
+plannotator-tui binary — the skill copy here is synced to that plugin and needs
+bun plus wl-clipboard from the bundles; workday-training needs
 global `agent-browser` + authenticated Chromium; recipe-diagrams needs
 Python 3 + ImageMagick. All are inert markdown until invoked.

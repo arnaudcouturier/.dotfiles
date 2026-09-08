@@ -20,7 +20,7 @@ file is and ask them to review it.
 3. **End your turn.** Do not wait, poll, or read the pane. The review arrives as the next
    user message, as numbered feedback:
 
-   ```text
+   ```
    ## 1. (line 12) Feedback on: "Rotate the token on every…"
    > Rotation on every privilege change will log people out…
    ```
@@ -32,4 +32,12 @@ so Ctrl-click in Herdr opens them in plannotator-tui:
 
 ```bash
 printf '\e]8;;file://%s\e\\%s\e]8;;\e\\\n' "$PWD/docs/plans/auth.md" "docs/plans/auth.md"
+```
+
+If `plannotator-tui` is not on `PATH`, the raw Herdr command is:
+
+```bash
+herdr plugin pane open --plugin plannotator-tui --entrypoint doc --placement split \
+  --direction right --target-pane "$HERDR_PANE_ID" --focus --cwd "$PWD" \
+  --env PLANNOTATOR_TUI_FILE="$PWD/docs/plans/auth.md" --env PLANNOTATOR_TUI_DELIVER_TO="$HERDR_PANE_ID"
 ```

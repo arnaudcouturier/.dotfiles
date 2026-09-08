@@ -38,6 +38,7 @@ repo "gh" # GitHub CLI (Arch name: github-cli)
 repo "neovim" # Neovim editor (the LazyVim starter config lives in home/.config/nvim)
 repo "qbittorrent" # BitTorrent client
 repo "nextcloud-client" # Nextcloud desktop file-sync client
+repo "wl-clipboard" # clipboard for Herdr Annotate's copy actions (wl-copy/wl-paste on Wayland)
 
 # Applications from official vendor repositories
 repofile "https://pkgs.tailscale.com/stable/fedora/tailscale.repo" # Tailscale's official repo
@@ -66,6 +67,7 @@ repo "nodejs22-npm-bin" # npm, paired with nodejs22-bin (the two own node and np
 npm "@earendil-works/pi-coding-agent" # pi coding agent CLI
 npm "@openai/codex" # OpenAI Codex CLI
 npm-scripts "@opencode-ai/cli@beta" # opencode2 (the @opencode/cli scope is an empty placeholder with no beta tag; its postinstall fetches the platform binary, and without it the CLI is a stub that refuses to run)
+npm-scripts "bun" # JavaScript runtime for Herdr Annotate's capture/manage actions (oven-sh's npm build; its postinstall fetches the platform binary)
 # Claude Code is installed by dot itself, and herdr on both distros: their
 # vendors' installers are the supported route (npm is deprecated for Claude).
 #

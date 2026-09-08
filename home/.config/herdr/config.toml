@@ -95,7 +95,8 @@ type = "plugin_action"
 command = "vim-herdr-navigation.right"
 description = "Navigate right (Vim/Herdr)"
 
-# Herdr Annotate: terminal comments, document review, and agent feedback.
+# Herdr Annotate: full install keys from plannotator/herdr-annotate README —
+# terminal comments, document review, and agent feedback.
 [[keys.command]]
 key = "prefix+a"
 type = "plugin_action"
@@ -109,7 +110,13 @@ command = "annotate.copy-context"
 description = "Copy annotations as agent context"
 
 [[keys.command]]
-key = "prefix+shift+m"
+key = "prefix+ctrl+a"
+type = "plugin_action"
+command = "annotate.copy-archive"
+description = "Copy annotations as context and archive them"
+
+[[keys.command]]
+key = "prefix+m"
 type = "plugin_action"
 command = "annotate.manage"
 description = "Manage annotations"
