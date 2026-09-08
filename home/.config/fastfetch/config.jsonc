@@ -18,7 +18,6 @@
     "cpu",
     "memory",
     "disk",
-    "break",
-    "colors"
+    "break"
   ]
 }

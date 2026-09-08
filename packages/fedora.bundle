@@ -30,7 +30,7 @@ repo "direnv" # per-directory env (hooked in fish config, idle without .envrc)
 repo "stow" # GNU Stow, deploys home/ via symlinks
 repo "ShellCheck" # linter for the dot script (capitalized on Fedora)
 repo "dnf5-plugins" # config-manager and copr plugins used by the verbs above
-repo "fastfetch" # minimalist system info shown in the fish greeting
+repo "fastfetch" # minimalist system info
 # No base-devel equivalent: Fedora has no AUR and nothing here builds from source.
 
 # Applications from the Fedora repositories

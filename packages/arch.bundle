@@ -22,7 +22,7 @@ repo "direnv" # per-directory env (hooked in fish config, idle without .envrc)
 repo "stow" # GNU Stow, deploys home/ via symlinks
 repo "shellcheck" # linter for the dot script
 repo "base-devel" # makepkg toolchain for AUR builds; no-op if already present
-repo "fastfetch" # minimalist system info shown in the fish greeting
+repo "fastfetch" # minimalist system info
 
 # Applications from the official repositories
 repo "github-cli" # GitHub CLI
