@@ -24,6 +24,7 @@ repo "fzf" # fuzzy finder
 repo "fd-find" # modern find replacement used by fzf (binary is /usr/bin/fd)
 repo "ripgrep" # fast code search
 repo "bat" # cat with syntax highlighting
+repo "glow" # terminal markdown reader
 repo "direnv" # per-directory env (hooked in fish config, idle without .envrc)
 
 # Plumbing for these dotfiles
