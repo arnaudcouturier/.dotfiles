@@ -118,6 +118,10 @@ parse_bundle_line() {
   ENTRY_URL=${ENTRY_URL#[\"\']}; ENTRY_URL=${ENTRY_URL%[\"\']}
   [[ -n ${ENTRY_NAME} ]] || die "Bundle line has no package name: ${line}"
   [[ -z ${extra} ]] || die "Bundle line has trailing text: ${line}"
+  # No dnf call can end its options with `--` (dnf5 dropped it), so a name or
+  # URL that starts with a dash would reach it as an option. Nothing legitimate
+  # does.
+  [[ ${ENTRY_NAME} != -* && ${ENTRY_URL} != -* ]] || die "Bundle entry starts with a dash: ${line}"
   # rpm and appimage install from a pinned URL that does not reveal the
   # installed name, so they carry both; every other verb names its own thing.
   case "${ENTRY_VERB}" in
@@ -259,13 +263,15 @@ pkg_query() {
 
 # Install one entry. Batched installs live in install_packages; this is the
 # single-entry path, shared by `dot package add`.
+# dnf5 rejects the `--` end-of-options separator, so no dnf call carries one;
+# a name that could pass for an option is refused when the entry is read.
 pkg_install() {
   local verb=$1 name=$2 url=${3:-}
   case "${verb}" in
     repo)
       case "${DISTRO}" in
         arch) sudo pacman -Syu --needed --noconfirm -- "${name}" ;;
-        fedora) sudo dnf install -y -- "${name}" ;;
+        fedora) sudo dnf install -y "${name}" ;;
       esac
       ;;
     aur)
@@ -277,7 +283,7 @@ pkg_install() {
       # dnf has to download the package before it can tell the pinned build is
       # already installed, so ask rpm first — these are 100MB+ each.
       pkg_query rpm "${name}" && return 0
-      sudo dnf install -y -- "${url}"
+      sudo dnf install -y "${url}"
       ;;
     repofile) sudo dnf config-manager addrepo --from-repofile="${name}" --overwrite ;;
     copr) sudo dnf -y copr enable "${name}" ;;
@@ -299,11 +305,11 @@ pkg_remove() {
     repo)
       case "${DISTRO}" in
         arch) sudo pacman -Rns --noconfirm -- "${name}" || log_warn "pacman could not remove ${name}." ;;
-        fedora) sudo dnf remove -y -- "${name}" || log_warn "dnf could not remove ${name}." ;;
+        fedora) sudo dnf remove -y "${name}" || log_warn "dnf could not remove ${name}." ;;
       esac
       ;;
     aur) yay -Rns --noconfirm -- "${name}" || log_warn "yay could not remove ${name}." ;;
-    rpm) sudo dnf remove -y -- "${name}" || log_warn "dnf could not remove ${name}." ;;
+    rpm) sudo dnf remove -y "${name}" || log_warn "dnf could not remove ${name}." ;;
     npm) sudo npm uninstall -g "$(npm_entry_name "${name}")" || log_warn "npm could not remove ${name}." ;;
     appimage) rm -f -- "$(appimage_path "${url}")" "$(appimage_desktop "${name}")" ;;
     repofile) log_warn "The repository from ${name} stays configured; drop its file from /etc/yum.repos.d if unwanted." ;;
@@ -664,7 +670,8 @@ cmd_package_add() {
       [[ ${name} == https://* ]] || die "repofile entries need an https URL; got: ${name}"
       ;;
     *)
-      [[ ${name} =~ ^[@A-Za-z0-9._/+-]+$ ]] || die "Invalid ${verb} entry name: ${name}"
+      # Leading dash excluded: see parse_bundle_line.
+      [[ ${name} =~ ^[@A-Za-z0-9._/+][@A-Za-z0-9._/+-]*$ ]] || die "Invalid ${verb} entry name: ${name}"
       ;;
   esac
   require_user
