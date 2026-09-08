@@ -5,12 +5,15 @@
 #   repofile "URL"         vendor repository file
 #   copr "owner/project"   COPR repository
 #   rpm "name" "URL"       pinned official RPM (the URL hides the real name)
+#   flatpak "app.id"       Flathub app, installed system-wide
 #   appimage "Name" "URL"  pinned AppImage into ~/Applications
 #   npm "package"          global npm package (--ignore-scripts)
+#   npm-scripts "package"  global npm package whose postinstall must run
 #
 # Sources are configured before any package installs, so keep each repofile and
-# copr next to what it feeds. Prefer the route that brings updates. No Flatpak,
-# no names translated from arch.bundle, and `aur` is refused here.
+# copr next to what it feeds. Prefer the route that brings updates. Flatpak is
+# for vendor-verified Flathub builds only, no names are translated from
+# arch.bundle, and `aur` is refused here.
 # Shell toolchain (dot init also makes fish the login shell)
 repo "fish" # friendly interactive shell
 copr "atim/starship" # the COPR starship's own README points Fedora users to
@@ -46,15 +49,18 @@ repo "brave-origin" # Brave Origin, the system's Chromium-based browser
 # Pinned official downloads — bump the URL to update
 rpm "keeperpasswordmanager" "https://download.keepersecurity.com/desktop_electron/Linux/repo/rpm/keeperpasswordmanager-18.6.1-1.x86_64.rpm" # Keeper password manager (vendor RPM repo ships no .repo file)
 rpm "proton-mail" "https://proton.me/download/mail/linux/1.13.4/ProtonMail-desktop-beta.rpm" # Proton Mail and Calendar (stable channel; the file name says beta, the channel does not)
-appimage "Obsidian" "https://github.com/obsidianmd/obsidian-releases/releases/download/v1.13.7/Obsidian-1.13.7.AppImage" # Obsidian notes (Obsidian's own updater may replace this file in place)
 rpm "equibop" "https://github.com/Equicord/Equibop/releases/download/v3.3.0/equibop-3.3.0.x86_64.rpm" # Equibop Discord client, from the Equicord project's own release
+
+# Flathub — vendor-verified builds that update through flatpak
+repo "flatpak" # the flatpak client itself (Workstation ships it; a fresh install may not)
+flatpak "md.obsidian.Obsidian" # Obsidian notes (Flathub build, verified by the Obsidian team)
 
 # AI agent CLIs
 repo "nodejs" # Node.js runtime
 repo "nodejs-npm" # npm package manager (Fedora's package name; it only *provides* "npm", and rpm -q matches names)
 npm "@earendil-works/pi-coding-agent" # pi coding agent CLI
 npm "@openai/codex" # OpenAI Codex CLI
-npm "@opencode-ai/cli@beta" # opencode2 (the @opencode/cli scope is an empty placeholder with no beta tag)
+npm-scripts "@opencode-ai/cli@beta" # opencode2 (the @opencode/cli scope is an empty placeholder with no beta tag; its postinstall fetches the platform binary, and without it the CLI is a stub that refuses to run)
 # Claude Code is installed by dot itself, and herdr on both distros: their
 # vendors' installers are the supported route (npm is deprecated for Claude).
 

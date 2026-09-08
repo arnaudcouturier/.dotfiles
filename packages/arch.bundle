@@ -26,7 +26,7 @@ repo "fastfetch" # minimalist system info shown in the fish greeting
 
 # Applications from the official repositories
 repo "github-cli" # GitHub CLI
-repo "obsidian" # Obsidian notes (packaged here; Fedora uses the AppImage)
+repo "obsidian" # Obsidian notes (packaged here; Fedora uses the Flathub build)
 repo "qbittorrent" # BitTorrent client
 repo "mullvad-vpn" # Mullvad VPN client
 repo "nextcloud-client" # Nextcloud desktop file-sync client

@@ -39,7 +39,8 @@ dot — install packages and link dotfiles on Arch and Fedora.
   ./dot doctor           check helpers, packages, plugins, symlinks, shell
   ./dot check-packages   list bundle entries missing from this machine
   ./dot package list     show this distro's bundle
-  ./dot package add NAME|URL [--aur|--rpm|--repofile|--copr|--appimage|--npm]
+  ./dot package add NAME|URL [--aur|--rpm|--flatpak|--repofile|--copr]
+                             [--appimage|--npm|--npm-scripts]
   ./dot package remove NAME
   ./dot benchmark-shell [-r RUNS]   time fish startup
 
@@ -135,7 +136,7 @@ parse_bundle_line() {
 # across distros, so a verb that cannot work here is a hard error.
 require_verb_for_distro() {
   case "$1" in
-    repo | aur | rpm | repofile | copr | appimage | npm) ;;
+    repo | aur | rpm | repofile | copr | flatpak | appimage | npm | npm-scripts) ;;
     *) die "Unknown bundle verb: $1" ;;
   esac
   case "${DISTRO}:$1" in
@@ -251,7 +252,11 @@ pkg_query() {
       esac
       ;;
     appimage) [[ -x "$(appimage_path "${url}")" ]] ;;
-    npm)
+    flatpak)
+      command -v flatpak >/dev/null 2>&1 || return 1
+      flatpak info "${name}" >/dev/null 2>&1
+      ;;
+    npm | npm-scripts)
       # Capture before matching: `npm ls -g` exits non-zero over any extraneous
       # or unmet dependency, and pipefail would read that as "not installed".
       command -v npm >/dev/null 2>&1 || return 1
@@ -287,11 +292,26 @@ pkg_install() {
       ;;
     repofile) sudo dnf config-manager addrepo --from-repofile="${name}" --overwrite ;;
     copr) sudo dnf -y copr enable "${name}" ;;
+    flatpak)
+      require_command flatpak
+      # Flathub is the only remote these entries come from, and both commands
+      # are system-wide: a per-user install would not follow a second user in.
+      sudo flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+      sudo flatpak install -y flathub "${name}"
+      ;;
     npm)
       # --ignore-scripts is pi's documented supply-chain posture; it applies
-      # to every npm entry.
+      # to every npm entry. The npm-scripts verb below is the one exemption.
       require_command npm
       sudo npm install -g --ignore-scripts "${name}"
+      ;;
+    npm-scripts)
+      # A package whose postinstall does the actual install — it fetches the
+      # platform binary, and --ignore-scripts leaves a stub that dies on first
+      # run. Filed under its own verb so the exemption is one grep away.
+      require_command npm
+      log_warn "Running ${name}'s own install scripts as root: this entry is exempt from --ignore-scripts."
+      sudo npm install -g "${name}"
       ;;
     appimage) appimage_install "${name}" "${url}" ;;
   esac
@@ -310,7 +330,8 @@ pkg_remove() {
       ;;
     aur) yay -Rns --noconfirm -- "${name}" || log_warn "yay could not remove ${name}." ;;
     rpm) sudo dnf remove -y "${name}" || log_warn "dnf could not remove ${name}." ;;
-    npm) sudo npm uninstall -g "$(npm_entry_name "${name}")" || log_warn "npm could not remove ${name}." ;;
+    flatpak) sudo flatpak uninstall -y "${name}" || log_warn "flatpak could not remove ${name}." ;;
+    npm | npm-scripts) sudo npm uninstall -g "$(npm_entry_name "${name}")" || log_warn "npm could not remove ${name}." ;;
     appimage) rm -f -- "$(appimage_path "${url}")" "$(appimage_desktop "${name}")" ;;
     repofile) log_warn "The repository from ${name} stays configured; drop its file from /etc/yum.repos.d if unwanted." ;;
     copr) log_warn "The COPR stays enabled; run: sudo dnf copr disable ${name}" ;;
@@ -641,7 +662,7 @@ cmd_doctor() {
 cmd_package_add() {
   local name=${1:-} verb='repo' url='' flag
   shift || true
-  [[ -n ${name} ]] || die 'Usage: ./dot package add NAME|URL [--aur|--rpm|--repofile|--copr|--appimage|--npm]'
+  [[ -n ${name} ]] || die 'Usage: ./dot package add NAME|URL [--aur|--rpm|--flatpak|--repofile|--copr|--appimage|--npm|--npm-scripts]'
   # A flag names the bundle verb; require_verb_for_distro rejects the ones
   # this distro cannot use.
   for flag in "$@"; do

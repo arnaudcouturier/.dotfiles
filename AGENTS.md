@@ -11,10 +11,17 @@ usage; these are the rules that are easy to break.
   for one distro. `dot` refuses a verb the current distro cannot use and dies
   before changing anything. Verify a Fedora entry against its vendor before
   adding it — never guess a name from an Arch one.
-- **No Flatpak.** There is no flatpak verb and there will not be one. An app
-  with no distro package gets a pinned vendor RPM or an AppImage.
-- **Prefer the route that brings updates**: vendor repository > COPR > pinned
-  RPM > AppImage > npm, and `repo` over `aur`.
+- **Flatpak only for a vendor-verified Flathub build.** `flatpak` entries
+  install system-wide from flathub and are Fedora-only; an app whose Flathub
+  build is not verified by its vendor gets a pinned vendor RPM or an AppImage
+  instead. Fedora's flatpak entries need `repo "flatpak"` in the bundle: repo
+  packages install before anything else, so the client is there in time.
+- **Prefer the route that brings updates**: vendor repository > COPR >
+  verified Flathub > pinned RPM > AppImage > npm, and `repo` over `aur`.
+- **npm entries install with `--ignore-scripts`.** The `npm-scripts` verb is
+  the deliberate exemption, for a package whose postinstall *is* the install
+  (it fetches the platform binary). Don't file an entry there to make an
+  install quieter — only when the CLI is a stub without it.
 - **`rpm` and `appimage` entries carry an explicit name** because the URL does
   not reveal it — `ProtonMail-desktop-beta.rpm` installs as `proton-mail`, and
   Keeper's real dist tag is `1.fc37`. Read a name with

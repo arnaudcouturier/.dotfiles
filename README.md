@@ -44,15 +44,19 @@ aur "name"              AUR via yay (Arch)
 repofile "URL"          vendor repository file (Fedora)
 copr "owner/project"    COPR repository (Fedora)
 rpm "name" "URL"        pinned official RPM (Fedora)
+flatpak "app.id"        Flathub app, system-wide (Fedora)
 appimage "Name" "URL"   pinned AppImage into ~/Applications
 npm "package"           global npm package (Fedora)
+npm-scripts "package"   global npm package whose postinstall must run (Fedora)
 ```
 
 `dot package add NAME` installs it and records it; a `--verb` flag picks
 anything other than `repo`. Pass the URL for `rpm` and `appimage` — they
 resolve the package name themselves, because the URL does not reveal it. Bump
 a pinned URL to update; everything else updates through its own package
-manager. No Flatpak.
+manager. Flatpak is for vendor-verified Flathub builds an app ships nowhere
+else — Obsidian on Fedora is the one. `npm` installs with `--ignore-scripts`;
+`npm-scripts` is the exemption for a package whose postinstall is the install.
 
 Names are never translated between distros (`fd` vs `fd-find`, `github-cli` vs
 `gh`), and every Fedora entry is verified against its vendor.
