@@ -25,8 +25,7 @@ https://github.com/dmmulroy/.dotfiles; only the generic extensions were kept
 ```
 
 Skills live in `home/.agents/skills/` (stowed to `~/.agents/skills/`).
-Do not copy them here. `agent/AGENTS.md` next to this file holds the
-privilege-escalation policy for agents.
+Do not copy them here.
 
 ## WHERE TO LOOK
 
