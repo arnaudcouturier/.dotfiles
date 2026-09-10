@@ -90,6 +90,3 @@ On Arch, `~/.config/hypr/` is generated output; edit the sources above.
 
 Packages: [`arch`](packages/arch.bundle) · [`fedora`](packages/fedora.bundle) —
 one commented line per entry. Verbs and policy: [`docs/usage.md`](docs/usage.md).
-
----
-*Inspired by [Dillon Mulroy's dotfiles](https://github.com/dmmulroy/.dotfiles), linked with [GNU Stow](https://www.gnu.org/software/stow/).*
