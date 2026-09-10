@@ -26,3 +26,17 @@ plannotator-tui binary — the skill copy here is synced to that plugin and need
 bun plus wl-clipboard from the bundles; workday-training needs
 global `agent-browser` + authenticated Chromium; recipe-diagrams needs
 Python 3 + ImageMagick. All are inert markdown until invoked.
+
+## kepano obsidian-skills (2026-09-10, from https://github.com/kepano/obsidian-skills at 8ccef29)
+
+Imported whole-skill: defuddle, json-canvas, knap, obsidian-bases,
+obsidian-cli, obsidian-markdown. MIT license (Copyright (c) 2026 Steph Ango
+(@kepano)); Agent Skills specification, stowed to `~/.agents/skills/` like the
+rest.
+
+Caveats: obsidian-cli drives a running Obsidian instance through its CLI
+(https://help.obsidian.md/cli); defuddle needs the `defuddle` CLI
+(`npm install -g defuddle`); knap needs the `knap` CLI (`npm install -g knap`,
+Node.js 20+, or `npx knap`). obsidian-markdown, obsidian-bases, and json-canvas
+are inert markdown. No bundle entry installs those CLIs — add one when the
+workflow is wanted.
