@@ -67,6 +67,13 @@ beside an incumbent display manager instead of displacing it; Limine entries
 are only added, never removed — the archinstall entry is kept. Caelestia is
 the Arch desktop; Fedora keeps its current desktop untouched.
 
+MEGA Sync with Thunar integration comes from MEGA's own Arch_Extra pacman
+repo (`https://mega.nz/linux/repo/Arch_Extra/$arch`, section
+`[DEB_Arch_Extra]`), configured automatically on Arch when the parsed
+bundle requests MEGA packages, before their install; the vendor key fingerprint is `B01C 8118 8048 0C85 4C73 EC7E 1A66
+4B78 7094 A482`. Packages are `megasync` plus `thunar-megasync`. Nothing
+about MEGA is installed or configured on Fedora.
+
 ## Packages
 
 One bundle per distro — `packages/arch.bundle`, `packages/fedora.bundle`. Every

@@ -15,6 +15,9 @@ readonly ARCH_HOME_OVERLAY_DIR="${DOTFILES_DIR}/home-arch"
 # Fedora-only desktop sources, owned by this repo like shared home/.
 readonly FEDORA_HOME_OVERLAY_DIR="${DOTFILES_DIR}/home-fedora"
 readonly ARCH_DESKTOP_MODULE="${DOTFILES_DIR}/lib/arch-desktop.sh"
+# MEGA vendor-repo module. lib/arch-mega.sh belongs to the arch-apps
+# agent; dot references its three-function API but never creates it.
+readonly ARCH_MEGA_MODULE="${DOTFILES_DIR}/lib/arch-mega.sh"
 readonly ARCH_LIB_DIR="${DOTFILES_DIR}/lib"
 readonly APPIMAGE_DIR="${HOME}/Applications"
 readonly DESKTOP_DIR="${HOME}/.local/share/applications"
@@ -427,7 +430,16 @@ ensure_helpers() {
 }
 
 install_packages() {
+  # Validate first: a malformed or unsupported bundle dies here, before any
+  # vendor key is trusted or pacman.conf edited.
   parse_bundle
+  # MEGA vendor repo only on demand: when the parsed bundle actually
+  # requests a vendor package. init, update, and arch-setup all batch
+  # through here, so one conditional covers every bundle install. Runs
+  # under the caller's elevation; Arch-gated inside the ensure.
+  if bundle_requests_mega_repo; then
+    ensure_mega_vendor_repo
+  fi
   local entry verb name url
   local -a repo_pkgs=() aur_pkgs=()
   # Sources first: repofile and copr entries feed the repo entries below them.
@@ -982,6 +994,9 @@ cmd_package_add() {
   if existing="$(bundle_verb_of "${name}")"; then
     die "'${name}' is already in the bundle as ${existing}."
   fi
+  # MEGA vendor repo first on Arch single-adds (the Thunar integration
+  # packages resolve from it); silent for other names and distros.
+  arch_mega_ensure_for_package "${verb}" "${name}"
   # Install first so a failed install cannot leave a phantom bundle entry.
   log_step "Installing ${verb} \"${name}\""
   pkg_install "${verb}" "${name}" "${url}"
@@ -1130,6 +1145,67 @@ arch_load_desktop_or_die() {
   arch_source_desktop_quiet || die 'Arch desktop module is missing: lib/arch-desktop.sh has not landed. Complete arch-setup needs it.'
 }
 
+# MEGA vendor repository integration (MEGA Sync + Thunar file manager
+# plugin). The module file belongs to the arch-apps agent; dot only
+# lazy-sources it and calls its three-function API, never implementing repo
+# behavior itself.
+# True when the MEGA interface is already present, however it was loaded.
+# Re-sourcing readonly globals would die under set -e, so presence — not
+# the registry below — is the real loaded condition.
+arch_mega_is_loaded() {
+  declare -F arch_mega_setup_vendor_repo >/dev/null 2>&1
+}
+
+# Source the MEGA module once when the file exists; false when missing
+# (callers warn-skip until it lands). Never re-sources readonly globals.
+arch_source_mega_quiet() {
+  arch_mega_is_loaded && return 0
+  [[ -r ${ARCH_MEGA_MODULE} ]] || return 1
+  arch_source_once arch-mega "${ARCH_MEGA_MODULE}"
+}
+
+# True when the parsed bundle requests a MEGA vendor-repo package. Keeps
+# the vendor source coupled to demand: removing the apps removes the repo
+# setup, and an invalid bundle never reaches key trust. Canonical names
+# mirror ARCH_MEGA_PACKAGES in the module; repo verb only (the AUR builds
+# are a rejected route, never a demand signal).
+bundle_requests_mega_repo() {
+  local entry verb name _url
+  for entry in "${BUNDLE_ENTRIES[@]}"; do
+    read -r verb name _url <<<"${entry}"
+    [[ ${verb} == repo ]] || continue
+    [[ ${name} == megasync || ${name} == thunar-megasync ]] && return 0
+  done
+  return 1
+}
+
+# Ensure the MEGA vendor repo before any Arch package install. Arch-gated
+# first (other distros return before any sourcing, sudo, or network) and
+# runs under the caller's elevation; all mutation happens inside the module
+# (verified key plus one pacman.conf section, fail-loud). A missing module
+# is a transitional warn-skip: the bundle carries no MEGA lines until it
+# lands, so nothing yet needs the repo.
+ensure_mega_vendor_repo() {
+  [[ ${DISTRO:-} == arch ]] || return 0
+  arch_source_mega_quiet || {
+    log_warn 'MEGA vendor module is missing: lib/arch-mega.sh has not landed; skipping repo setup.'
+    return 0
+  }
+  declare -F arch_mega_setup_vendor_repo >/dev/null 2>&1 \
+    || die 'lib/arch-mega.sh does not provide arch_mega_setup_vendor_repo; coordinate the API before proceeding.'
+  arch_mega_setup_vendor_repo
+}
+
+# Pre-install gate for `dot package add` on Arch: only the two vendor-repo
+# names trigger setup (canonical list: ARCH_MEGA_PACKAGES in the module).
+# Anything else — and every other distro — returns silently.
+arch_mega_ensure_for_package() {
+  local verb=$1 name=$2
+  [[ ${DISTRO:-} == arch && ${verb} == repo ]] || return 0
+  [[ ${name} == megasync || ${name} == thunar-megasync ]] || return 0
+  ensure_mega_vendor_repo
+}
+
 # The desktop draft predates the stow-based contract; require the interface
 # it adapts to, with a message that names the fix instead of a bare
 # "command not found" under set -e.
@@ -1199,12 +1275,9 @@ cmd_arch_setup() {
   [[ -n ${only} ]] || die 'Usage: ./dot arch-setup [--only step,...] [--replace-display-manager]'
   arch_load_modules
   require_arch_system
-  require_user
-  begin_elevation
-  ensure_helpers
-  install_packages
-  stow_dotfiles
-  stow_arch_overlay
+  # Validate the step filter before any elevation, network, or mutation:
+  # an unknown step dies here, before helpers, bundle installs (and any
+  # vendor-repo setup they demand), stow, or provisioning steps run.
   # Capture, then check: mapfile over a process substitution would mask a
   # dying filter under set -e and report success over zero steps.
   local steps_text steps_rc=0
@@ -1216,6 +1289,12 @@ cmd_arch_setup() {
     steps+=("${step}")
   done <<<"${steps_text}"
   ((${#steps[@]} > 0)) || die "Refusing an empty arch run with filter '${only}'."
+  require_user
+  begin_elevation
+  ensure_helpers
+  install_packages
+  stow_dotfiles
+  stow_arch_overlay
   for step in "${steps[@]}"; do
     case "${step}" in
       system) arch_system_setup ;;
@@ -1269,7 +1348,22 @@ cmd_arch_check() {
   ((${#steps[@]} > 0)) || die "Refusing an empty arch check with filter '${only}'."
   for step in "${steps[@]}"; do
     case "${step}" in
-      system) arch_system_verify || failed=1 ;;
+      system)
+        arch_system_verify || failed=1
+        # MEGA vendor repo status, read-only (a check never mutates). A
+        # missing module or unconfigured repo pre-init is expected drift:
+        # reported in place, repaired by the install paths, never here.
+        if arch_source_mega_quiet; then
+          if declare -F arch_mega_verify_vendor_repo >/dev/null 2>&1; then
+            arch_mega_verify_vendor_repo || failed=1
+          else
+            log_error 'lib/arch-mega.sh does not provide arch_mega_verify_vendor_repo.'
+            failed=1
+          fi
+        else
+          log_info 'MEGA vendor module is missing: lib/arch-mega.sh has not landed; skipping repo verification.'
+        fi
+        ;;
       gpu) arch_gpu_verify || failed=1 ;;
       snapshots) arch_snapshots_verify || failed=1 ;;
       desktop)

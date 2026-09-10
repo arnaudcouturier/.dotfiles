@@ -90,6 +90,16 @@ arch_system_setup_swap_policy() {
   log_ok 'Compressed swap and virtual memory policy are active.'
 }
 
+# Enable the Mullvad VPN daemon when its package is selected. Package-gated,
+# not unit-gated: an installed package with a missing unit is a broken
+# install and dies here (required flag) instead of silently skipping; a
+# deselected package is a silent noop. enable --now is idempotent, so
+# re-running repairs a disabled daemon and no-ops a healthy one.
+arch_system_setup_mullvad() {
+  pacman -Q mullvad-vpn >/dev/null 2>&1 || return 0
+  arch_enable_system_unit mullvad-daemon.service
+}
+
 # Enable the core desktop services plus optional timers. Core units must
 # exist (their packages are in arch.bundle); deselectable timers only warn,
 # so a minimal bundle is never punished for skipping firmware or SMART tooling.
@@ -117,6 +127,7 @@ arch_system_setup_services() {
   for service in tailscaled.service docker.service; do
     arch_unit_exists "${service}" && arch_enable_system_unit "${service}" optional || true
   done
+  arch_system_setup_mullvad
   log_ok 'System services are enabled.'
 }
 
@@ -148,6 +159,21 @@ arch_system_verify() {
   done
   [[ -x /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1 ]] \
     || { log_error 'Polkit agent missing; graphical prompts would do nothing.'; failed=1; }
+  # Mullvad follows the package, not the unit: a deselected package skips
+  # silently, while a selected one reports each broken state distinctly —
+  # missing unit (broken install), disabled, or inactive. Repair for all
+  # three: ./dot arch-setup --only system.
+  if pacman -Q mullvad-vpn >/dev/null 2>&1; then
+    if arch_unit_exists mullvad-daemon.service; then
+      systemctl is-enabled --quiet mullvad-daemon.service 2>/dev/null \
+        || { log_error 'mullvad-daemon is installed but not enabled. Run ./dot arch-setup --only system.'; failed=1; }
+      systemctl is-active --quiet mullvad-daemon.service 2>/dev/null \
+        || { log_error 'mullvad-daemon is installed but not active. Run ./dot arch-setup --only system.'; failed=1; }
+    else
+      log_error 'mullvad-vpn is installed but mullvad-daemon.service is missing: reinstall the package, then run ./dot arch-setup --only system.'
+      failed=1
+    fi
+  fi
   # Optional timers report drift without failing: their packages are
   # deselectable, so an absent unit is a choice, but an installed yet
   # disabled one is worth a look.

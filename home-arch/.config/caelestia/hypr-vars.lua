@@ -25,12 +25,12 @@
 -- "bars", which is what caelestia:showall reveals.
 --
 -- automaticNightLight controls the GeoClue + Gammastep startup in execs.lua
--- (see the arch-desktop night light patch). SUPER + SHIFT + N temporarily
--- toggles that running adjustment (see hypr-user.lua). Set this to false
--- only to disable automatic night light at future session startups.
+-- (see the arch-desktop night light patch). false keeps new sessions
+-- without automatic night light; SUPER + SHIFT + N still toggles the
+-- running adjustment for this session (see hypr-user.lua).
 return {
     kbShowPanels        = "SUPER + B",
-    automaticNightLight = true,
+    automaticNightLight = false,
 
     terminal             = "ghostty",
     browser              = "brave-origin",

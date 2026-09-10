@@ -116,6 +116,11 @@ end_elevation
 ((setup_bogus_status != 0)) || test_arch_die 'H2: arch-setup --only bogus succeeded with zero steps'
 printf '%s\n' "${setup_bogus_out}" >"${TEST_ARCH_SANDBOX}/setup-bogus.txt"
 test_arch_assert_contains "${TEST_ARCH_SANDBOX}/setup-bogus.txt" 'Unknown arch step' 'H2: setup bogus step named'
+# H3: the bogus filter dies before elevation, helpers, bundle installs, and
+# any vendor-repo setup they would demand — the calls log stays clean.
+for cmd in sudo curl pacman-key yay; do
+  test_arch_assert_not_called "${cmd}" "H3: bogus --only must fail before ${cmd} side effects"
+done
 export HOME="${TEST_ARCH_HOME}"
 # Forwarding aliases are distro-independent: shared stow and doctor skip
 # them everywhere, and each distro stows its own real copy from its own

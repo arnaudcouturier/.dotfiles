@@ -53,6 +53,11 @@ checks each tree against its selected source; Fedora is otherwise unchanged.
 - **`lib/arch-desktop.sh` belongs to the desktop agent.** `dot` guards its
   interface with `declare -F`; never implement desktop behavior in `dot` or
   system modules. `home-arch/` likewise: reference, never create.
+- **`lib/arch-mega.sh` belongs to the arch-apps agent** (MEGA vendor
+  repository). `dot` lazy-sources it and calls its three-function API
+  (`arch_mega_vendor_repo_configured`, `arch_mega_setup_vendor_repo`,
+  `arch_mega_verify_vendor_repo`); never implement repo behavior in `dot`
+  or system modules, and never create the module file.
 - **Elevation is terminal sudo only.** `init`/`update` authenticate once and
   refresh in the background. No pkexec, no NOPASSWD, no `sudo -A`. Don't call
   `sudo` from an agent shell — let `dot` do it.

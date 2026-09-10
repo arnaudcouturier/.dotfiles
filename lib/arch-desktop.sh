@@ -10,8 +10,7 @@ set -euo pipefail
 # - This module owns ONLY home-side desktop integration: the home-arch/
 #   overlay (stowed, Stow ownership, no backups — the repo's stow contract),
 #   the Caelestia installer run and upstream tree validation, the night
-#   light patch, home-side theme enables for kept apps, and wallpaper
-#   selection. Everything runs as the desktop user: no sudo anywhere here.
+#   light patch, and home-side theme enables for kept apps. Everything runs as the desktop user: no sudo anywhere here.
 # - The lead owns dot, gating, packages, /etc and systemd, greetd, video
 #   (shader link), and Limine. Shader linking lives in lib/arch-video.sh;
 #   this module only ships mpv.conf/input.conf for video to consume.
@@ -72,16 +71,6 @@ readonly ARCH_DESKTOP_CAELESTIA_STATE_DIR="${ARCH_DESKTOP_STATE_HOME}/caelestia"
 readonly ARCH_DESKTOP_CAELESTIA_STATE_FILE="${ARCH_DESKTOP_CAELESTIA_STATE_DIR}/dots-state.json"
 readonly ARCH_DESKTOP_CAELESTIA_DOTS_DIR="${ARCH_DESKTOP_CAELESTIA_STATE_DIR}/dots"
 readonly ARCH_DESKTOP_UWSM_CONFIG_DIR="${ARCH_DESKTOP_CONFIG_HOME}/uwsm"
-readonly ARCH_DESKTOP_WALLPAPER_REPOSITORY='https://github.com/dharmx/walls.git'
-readonly ARCH_DESKTOP_WALLPAPER_DIR="${HOME}/Pictures/Wallpapers"
-# Sparse categories actually kept: only these are ever fetched, the rest of
-# upstream is never downloaded. Empty here is a loud failure, never "keep
-# everything".
-readonly -a ARCH_DESKTOP_WALLPAPER_KEPT_CATEGORIES=(
-  abstract animated anime apeiros calm centered chillop devicons digital
-  dreamcore evangelion gruvbox m-26.jp minimal mountain nature nord outrun
-  painting pixel radium spam stalenhag tile unsorted
-)
 # Hyprland Lua config generation Caelestia requires; below it the old .conf
 # format cannot express the deployed tree.
 readonly ARCH_DESKTOP_MIN_HYPRLAND='0.55.0'
@@ -233,11 +222,12 @@ arch_desktop_expected_execs() {
 # (this presupposes the lead's shared hypr/input.lua exclusion on Arch —
 # without it a working tree still fails here, loudly, by design).
 # Fish is deliberately NOT required in dots-state: the overlay's
-# conf.d/caelestia-sequences.fish replays the scheme without the installer's
+# conf.d/caelestia-*.fish snippets replay the scheme and carry the Arch
+# terminal look without the installer's
 # fish component ever editing the shared stowed fish config.
 # Endless-reinstall audit (vendor-verified): the walk compares SOURCE-tracked
 # files only. Runtime-mutated files (hypr/scheme/current.lua, scheme.json,
-# sequences.txt, wallpaper state, gtk.css/thunar.css/fuzzel.ini/discord
+# sequences.txt, gtk.css/thunar.css/fuzzel.ini/discord
 # themes) are generated beside the tree, never tracked in dots, so scheme
 # switches and theme updates can never dirty this check.
 arch_desktop_caelestia_tree_complete() {
@@ -335,7 +325,9 @@ arch_desktop_apply_night_light_patch() {
 # theme in the local theme list (internal, kept app only — never installs
 # anything): quiet skip when the installer never generated the theme;
 # warn-skip when settings are absent (launch Equibop once); loud death only
-# when an update is attempted and fails.
+# when an update is attempted and fails. Config dir stays `equibop/`
+# regardless of the package name (`equibop` vs `equibop-git`): the vendor
+# config home does not follow the AUR suffix.
 arch_desktop_enable_equibop_theme() {
   local config_home theme_file settings_file tmp
   config_home="${ARCH_DESKTOP_CONFIG_HOME}"
@@ -361,45 +353,6 @@ arch_desktop_enable_equibop_theme() {
   log_ok 'arch-desktop: Equibop Caelestia theme enabled.'
 }
 
-# arch_desktop_ensure_wallpapers clones (or fast-forward pulls) the upstream
-# wallpaper repository and checks out exactly the kept sparse categories
-# (internal). A private/unreachable remote fails loudly instead of hanging
-# at a credential prompt (GIT_TERMINAL_PROMPT + ASKPASS). A foreign repo or
-# a non-git directory at the target is left untouched with a warning, never
-# clobbered. ~/Pictures/Wallpapers (capital W) never collides with the
-# shared lowercase Pictures/wallpapers/ on case-sensitive filesystems.
-arch_desktop_ensure_wallpapers() {
-  ((${#ARCH_DESKTOP_WALLPAPER_KEPT_CATEGORIES[@]} > 0)) \
-    || die 'arch_desktop_ensure_wallpapers: kept-category list is empty; nothing to select.'
-  require_command git
-  export GIT_TERMINAL_PROMPT=0
-  export GIT_ASKPASS=/bin/true
-  if [[ -d ${ARCH_DESKTOP_WALLPAPER_DIR}/.git ]]; then
-    local origin_url
-    origin_url="$(git -C "${ARCH_DESKTOP_WALLPAPER_DIR}" remote get-url origin 2>/dev/null)" || origin_url=''
-    if [[ ${origin_url%.git} == "${ARCH_DESKTOP_WALLPAPER_REPOSITORY%.git}" ]]; then
-      git -C "${ARCH_DESKTOP_WALLPAPER_DIR}" pull --ff-only \
-        || die "arch_desktop_ensure_wallpapers: cannot fast-forward ${ARCH_DESKTOP_WALLPAPER_DIR}."
-      git -C "${ARCH_DESKTOP_WALLPAPER_DIR}" sparse-checkout set "${ARCH_DESKTOP_WALLPAPER_KEPT_CATEGORIES[@]}" \
-        || die 'arch_desktop_ensure_wallpapers: cannot apply the sparse category selection.'
-      log_ok "arch-desktop: wallpapers updated at ${ARCH_DESKTOP_WALLPAPER_DIR}."
-    else
-      log_warn "arch-desktop: ${ARCH_DESKTOP_WALLPAPER_DIR} is a different repository; leaving it untouched."
-    fi
-  elif [[ -e ${ARCH_DESKTOP_WALLPAPER_DIR} || -L ${ARCH_DESKTOP_WALLPAPER_DIR} ]]; then
-    log_warn "arch-desktop: ${ARCH_DESKTOP_WALLPAPER_DIR} exists and is not a git checkout; leaving it untouched."
-  else
-    install -d "${HOME}/Pictures" \
-      || die 'arch_desktop_ensure_wallpapers: cannot create ~/Pictures.'
-    git clone --depth 1 --filter=blob:none --sparse \
-      "${ARCH_DESKTOP_WALLPAPER_REPOSITORY}" "${ARCH_DESKTOP_WALLPAPER_DIR}" \
-      || die 'arch_desktop_ensure_wallpapers: wallpaper clone failed.'
-    git -C "${ARCH_DESKTOP_WALLPAPER_DIR}" sparse-checkout set "${ARCH_DESKTOP_WALLPAPER_KEPT_CATEGORIES[@]}" \
-      || die 'arch_desktop_ensure_wallpapers: cannot apply the sparse category selection.'
-    log_ok "arch-desktop: wallpapers cloned to ${ARCH_DESKTOP_WALLPAPER_DIR}."
-  fi
-}
-
 # arch_desktop_configure_caelestia is the home-side Caelestia runtime
 # integration: mutating, idempotent, no sudo. From a minimal setup it
 # delivers the desktop: validates the install state, runs the upstream
@@ -408,7 +361,7 @@ arch_desktop_ensure_wallpapers() {
 # authoritative over installer defaults, guards execs.lua with the night
 # light patch, then gates on the patched tree (patch precedes the gate:
 # the check expects patched execs.lua, so gating first would brick every
-# pristine first install). Then Equibop theme when supported, wallpapers,
+# pristine first install). Then Equibop theme when supported,
 # and a final Hyprland verify. A missing required tree is a loud death,
 # never warn-green. Sequence contract: packages (lead) -> this -> overlay
 # verify + caelestia verify (greeter gate) -> greeter/video/limine (lead).
@@ -437,7 +390,6 @@ arch_desktop_configure_caelestia() {
   arch_desktop_caelestia_tree_complete \
     || die 'arch_desktop_configure_caelestia: tree incomplete after install and patch; rerun and read the output above.'
   arch_desktop_enable_equibop_theme
-  arch_desktop_ensure_wallpapers
   if [[ -f ${ARCH_DESKTOP_HYPR_MAIN_CONFIG} ]]; then
     if verify_output="$(Hyprland --verify-config --config "${ARCH_DESKTOP_HYPR_MAIN_CONFIG}" 2>&1)"; then
       log_ok 'arch-desktop: Hyprland accepts the integrated tree.'

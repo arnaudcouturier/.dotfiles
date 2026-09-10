@@ -34,7 +34,7 @@ source "${TEST_ARCH_REPO_ROOT}/dot" >/dev/null
 source "${TEST_ARCH_REPO_ROOT}/lib/arch-desktop.sh"
 test_arch_arm_cleanup
 
-# --- Scripted externals (pacman/vercmp/Hyprland log; wallpapers warn-skip). ---
+# --- Scripted externals (pacman/vercmp/Hyprland log only; no wallpaper step). ---
 cat >"${TEST_ARCH_BIN}/pacman" <<EOF
 #!/usr/bin/env bash
 printf 'pacman %s\n' "\$*" >>"$(test_arch_calls_log)"
@@ -57,8 +57,6 @@ printf 'Hyprland %s\n' "\$*" >>"$(test_arch_calls_log)"
 exit 0
 EOF
 chmod 755 -- "${TEST_ARCH_BIN}/Hyprland"
-mkdir -p -- "${TEST_ARCH_HOME}/Pictures/Wallpapers/keep"
-printf 'mine\n' >"${TEST_ARCH_HOME}/Pictures/Wallpapers/keep/mine.txt"
 
 # --- Strict patch emulation (python stdlib): exact hunk bytes and offsets
 # --- only, else fail. Pins the literal; GNU patch runs on the Arch target.
@@ -173,7 +171,10 @@ find "${TEST_ARCH_REPO_ROOT}/home-arch" -type f -exec sha256sum -- {} + | sort -
   >"${TEST_ARCH_SANDBOX}/overlay-source-after.txt"
 cmp -s -- "${TEST_ARCH_SANDBOX}/overlay-source-before.txt" "${TEST_ARCH_SANDBOX}/overlay-source-after.txt" \
   || test_arch_die 'configure wrote through into the overlay source'
-test_arch_assert_contains "${TEST_ARCH_HOME}/Pictures/Wallpapers/keep/mine.txt" 'mine' 'foreign wallpaper dir untouched'
+# No wallpaper cloning: the shell uses the user's own wallpaper choice.
+if declare -F arch_desktop_ensure_wallpapers >/dev/null 2>&1; then
+  test_arch_die 'wallpaper clone routine still exists (must be removed, not disabled)'
+fi
 
 test_arch_assert_not_called sudo 'first install never elevates'
 test_arch_assert_no_live_paths 'first install'

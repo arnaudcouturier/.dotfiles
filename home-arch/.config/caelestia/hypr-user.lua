@@ -4,6 +4,23 @@
 -- Caelestia's hyprland.keybinds, so the binds below are added on top of
 -- Caelestia's set. One hl.config call on purpose: a single table means no
 -- merge semantics to guess about.
+--
+-- Monitor settings live HERE, not in ~/.config/hypr/hyprland.lua.
+-- That entry file is upstream-owned (Caelestia installer deploys it; default
+-- `hl.monitor({ output = "", mode = "preferred", position = "auto",
+-- scale = 1 })` at caelestia-dots @ 1ee7a98 hypr/hyprland.lua:53-59) and
+-- must never be edited (upstream README CAUTION). This file is the
+-- supported override: stowed to ~/.config/caelestia/hypr-user.lua on Arch
+-- and loaded last via `require("hypr-user")`. No active monitor block is
+-- committed below — find your outputs with `hyprctl monitors`, then add
+-- your own `hl.monitor` call. Minimal shape (commented example only):
+--
+-- hl.monitor({
+--     output   = "HDMI-A-1",
+--     mode     = "preferred",
+--     position = "auto",
+--     scale    = 1,
+-- })
 hl.config({
     -- VRR mode 3 enables adaptive sync only for fullscreen surfaces that
     -- declare `video` or `game` content type, which keeps the OLED off VRR

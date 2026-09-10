@@ -195,11 +195,13 @@ jq -e '.enabledThemes | index("caelestia.theme.css") != null' \
   "${TEST_ARCH_HOME}/.config/equibop/settings/settings.json" >/dev/null \
   || test_arch_die 'equibop theme was not merged'
 
-# --- Wallpapers: foreign targets are left untouched, never clobbered. ---
-mkdir -p -- "${TEST_ARCH_HOME}/Pictures/Wallpapers"
-printf 'mine\n' >"${TEST_ARCH_HOME}/Pictures/Wallpapers/keep.txt"
-arch_desktop_ensure_wallpapers >/dev/null
-test_arch_assert_contains "${TEST_ARCH_HOME}/Pictures/Wallpapers/keep.txt" 'mine' 'foreign wallpaper dir untouched'
+# --- No wallpaper cloning: the routine is gone; user files are never touched. ---
+if declare -F arch_desktop_ensure_wallpapers >/dev/null 2>&1; then
+  test_arch_die 'wallpaper clone routine still exists (must be removed, not disabled)'
+fi
+if grep -rn 'WALLPAPER' "${TEST_ARCH_REPO_ROOT}/lib/arch-desktop.sh" 2>/dev/null; then
+  test_arch_die 'wallpaper constants still present in lib/arch-desktop.sh'
+fi
 
 # --- No write-through: overlay source and fixture origin unchanged. ---
 find "${TEST_ARCH_REPO_ROOT}/home-arch" -type f -exec sha256sum -- {} + | sort -k2 \

@@ -24,7 +24,7 @@ from minimal archinstall with existing Limine and no DE.
 | `modules/30-services.sh` + zram/sysctl templates | Adapted | `lib/arch-system.sh` + `system/arch/systemd/zram-generator.conf` + `system/arch/sysctl.d/99-arch-zram.conf` (renamed from `99-arch-config.conf`: it holds only the zram VM pair). Core units fail loudly; deselectable timers warn-skip when their package is absent — and the bundle now carries those providers (`pacman-contrib`, `reflector`, `fwupd`, `smartmontools`), so fresh installs enable them while minimal systems stay valid. Polkit agent verified by absolute path (no unit exists). `tailscaled` enabled opportunistically (already bundled); `docker` likewise (absent without WinBoat). |
 | `modules/35-snapshots.sh` | Adapted | `lib/arch-snapshots.sh`: btrfs-gated, tooling installs on demand, `root` config with `/.snapshots` refusal, timeline/cleanup timers, bootloader gap warned (Limine never removes entries, so a hand-added snapshot entry survives). |
 | `modules/40-greeter.sh` + `etc/greetd/config.toml` | Adapted | `lib/arch-greeter.sh` + `system/arch/greetd/config.toml`: niri/kitty/sysc-greet, binary-path reconcile, greeter account/groups, config backup, PAM keyring unlock (optional lines only), `85-greeter.rules` check. Incumbent-DM refusal happens FIRST, before any mutation; only `--replace-display-manager` displaces. |
-| `modules/45-caelestia.sh` (installer wrapper, tree verification, app integrations, wallpapers) | Split | Installer + user-runtime configuration: desktop agent inside `arch_desktop_configure_caelestia` (`lib/arch-desktop.sh`, `home-arch/`). Night-light patch concept survives as their patch function. Spotify/Spicetify and editor re-theming to non-selection editors are excluded; wallpapers are desktop-owned (sparse `dharmx/walls` clone into `~/Pictures/Wallpapers`, case-distinct from shared `~/Pictures/wallpapers`, which stays untouched). `uwsm` is an explicit `repo` entry (Arch extra, vendor-confirmed; desktop upstream verification confirms the Caelestia manifest ships `packages=[uwsm]`). |
+| `modules/45-caelestia.sh` (installer wrapper, tree verification, app integrations) | Split | Installer + user-runtime configuration: desktop agent inside `arch_desktop_configure_caelestia` (`lib/arch-desktop.sh`, `home-arch/`). Night-light patch concept survives as their patch function. Spotify/Spicetify and editor re-theming to non-selection editors are excluded; no wallpaper cloning — the shell uses whatever wallpaper the user picks, and the shared `~/Pictures/wallpapers/` themes stay untouched. `uwsm` is an explicit `repo` entry (Arch extra, vendor-confirmed; desktop upstream verification confirms the Caelestia manifest ships `packages=[uwsm]`). |
 | `modules/50-dotfiles.sh` (copy model) | Mechanism rejected, selection kept | Stow stays the deployer (repo standard). `dot` stows shared (skipping the two forwarding aliases everywhere) then the selected distro overlay, and prunes only provably-ours stale shared symlinks (a link resolving into shared `home/`); real files and foreign links are warned about and left. `doctor` asserts each tree against its selected source with no exemption: overlay links must resolve into `home-arch/`, and the generated Hypr tree stays outside the stowed expected set. No home backup/copy logic anywhere. |
 | `dotfiles/caelestia/hypr-vars.lua`, `hypr-user.lua` | Adapted by desktop agent | `home-arch/.config/caelestia/`: overrides retargeted at current selection; NVIDIA env conditional on detected hardware; Arch user override carries the `hypr/input.lua` keyboard equivalent. |
 | `dotfiles/desktop/ghostty/config` | Per-distro sources | `home-arch/` Ghostty wins on Arch; `home-fedora/` carries the DMS config on Fedora; shared `home/` keeps only a forwarding alias, never stowed. |
@@ -44,16 +44,60 @@ from minimal archinstall with existing Limine and no DE.
 - Caelestia installer/user-runtime: desktop agent's `arch_desktop_configure_caelestia`. `arch-setup` installs helpers + bundle + stows files BEFORE side-effecting steps, so minimal Arch has a real path (`init`, then `arch-setup`).
 ## Notes
 
-- Scheme replay lives in an overlay `fish/conf.d` snippet; the installer
+- Scheme replay plus the Arch terminal look live in overlay `fish/conf.d`
+  snippets (`caelestia-sequences`, `caelestia-greeting`, `caelestia-starship`);
+  the installer
   disables its fish/starship/fastfetch components, so shared
-  `fish/config.fish` is never written through its symlink.
+  `fish/config.fish` is never written through its symlink. The Arch prompt
+  comes from `home-arch/.config/caelestia/starship-caelestia.toml` via
+  `$STARSHIP_CONFIG` (upstream base at `caelestia-dots @ 1ee7a98` plus the
+  repo's `command_timeout`, Node probing guard, and disabled `package`); the
+  Arch greeting replays the upstream Caelestia ASCII plus fastfetch with the
+  overlay boxed config. Shared Starship/fastfetch stay untouched for Fedora.
 - The `hypr/input.lua` keyboard equivalent lives in
   `home-arch/.config/caelestia/hypr-user.lua`; nothing may ever live under
   `home-arch/.config/hypr/` (upstream-deployed directory).
+- Monitor layout lives in `home-arch/.config/caelestia/hypr-user.lua`
+  (stowed to `~/.config/caelestia/hypr-user.lua` on Arch, loaded last via
+  `require("hypr-user")`); never edit the generated
+  `~/.config/hypr/hyprland.lua` (upstream default `hl.monitor` with
+  `preferred`/`auto`). The overlay carries only a commented `hl.monitor`
+  example — no active machine layout is committed.
 - `uwsm` is an explicit bundle entry (Arch extra); the installer enables
   the component, and verification asserts its session files.
 - `neovim` is bundled (shared LazyVim config; Caelestia editor target); no
 other editors.
+- MEGA Sync (Thunar integration) resolves from MEGA's own vendor repo,
+  not official extra or the AUR: `Server =
+  https://mega.nz/linux/repo/Arch_Extra/$arch` under section
+  `[DEB_Arch_Extra]` (the section name equals the only published DB,
+  `DEB_Arch_Extra.db` — inferred from pacman behavior plus the vendor
+  directory listing, to confirm on Arch with `pacman -Si megasync`).
+  Vendor key `B01C 8118 8048 0C85 4C73 EC7E 1A66 4B78 7094 A482`
+  (`MegaLimited <support@mega.co.nz>`, `DEB_Arch_Extra.key`); the module
+  verifies the fingerprint on a fetched copy and locally signs it — no
+  `--recv-keys` from keyservers, no unsigned fallback. Packages are
+  `megasync` then `thunar-megasync` (plugin depends on the client); the
+  bundle lines are apps-owned and land after the repo seam. `dot` parses
+  and validates the bundle first (malformed input fails before any key
+  trust or config edit), then ensures the repo only when the parsed bundle
+  requests a vendor package (one `install_packages` seam covers
+  init/update/arch-setup, plus a `package add` gate for the two names).
+  `arch-check` verifies read-only against the strong end state — exact
+  section + pinned server, vendor key trusted (not merely present), and
+  both packages visible — while `doctor` stays unchanged.
+  Primary sources: `https://mega.io/desktop` (download URLs),
+  `https://mega.nz/linux/repo/Arch_Extra/x86_64/` (directory + DB).
+  Nothing MEGA is claimed on Fedora: no bundle lines, no repo, no key.
+- Arch opencode2 is `aur "opencode-beta"` (binary `opencode2`); the
+  official-extra `opencode` package is stable v1 (binary `opencode`) and is
+  not a substitute. No `dot` change was needed (existing `aur` batch).
+- Mullvad VPN needs its daemon: `arch_system_setup_mullvad` enables
+  `mullvad-daemon.service` (required) only when `mullvad-vpn` is installed —
+  a missing unit with the package present is a broken install and fails
+  loudly, while a deselected package is a silent noop. Verify reports
+  missing/disabled/inactive distinctly. Repair is
+  `./dot arch-setup --only system`; init/update never provision services.
 
 ## Upstream installer package scope (resolved)
 

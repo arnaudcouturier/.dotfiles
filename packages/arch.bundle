@@ -48,8 +48,14 @@ aur "keeper-password-manager" # Keeper password manager
 aur "proton-mail-bin" # Proton Mail and Calendar (the source build's sharp
                       # dependency fails under yarn's node-gyp, so this is the
                       # repack of Proton's own build)
-aur "equibop" # Equibop Discord client
+aur "equibop-git" # Equibop Discord client, git build tracking Equicord upstream (provides/conflicts equibop, so exactly one client installs)
 aur "chatgpt-desktop" # ChatGPT desktop app (repack of OpenAI's Linux binary)
+aur "opencode-beta" # OpenCode V2 beta (binary opencode2; stable opencode is a different binary)
+
+# Applications from the MEGA vendor repository (lib/arch-mega.sh configures
+# DEB_Arch_Extra before install; Thunar file manager integration)
+repo "megasync" # MEGA desktop file-sync client
+repo "thunar-megasync" # MEGA Thunar integration (matches the bundled file manager)
 
 # Arch desktop infrastructure (./dot arch-setup provisions these; Caelestia is
 # the Arch desktop, DMS stays Fedora). Infrastructure only: no archive browsers,
