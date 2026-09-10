@@ -1,14 +1,16 @@
 <h1 align="center">
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/img/dotfiles-hero-dark.svg">
-  <img alt="Dotfiles for Arch and Fedora: shared tools, separate desktops" src="docs/img/dotfiles-hero-light.svg" width="760">
+  <img alt=".dotfiles — shared tools, separate desktops: workbench with fanned home, home-arch, and home-fedora cards tied by a stow string" src="docs/img/dotfiles-hero-light.svg" width="760">
 </picture>
 </h1>
 
 **Dotfiles** — one script installs this machine's packages and links every config with GNU Stow.
 Arch gets the full Caelestia workstation; Fedora gets apps and config on the desktop it already has.
 
-[Setup](#setup) · [Everyday](#everyday) · [Arch system](#arch-system) · [Packages](#packages) · [Customize](#customize)
+<p align="center">
+<a href="#setup">Setup</a> · <a href="#everyday">Everyday</a> · <a href="#arch-system">Arch system</a> · <a href="#packages">Packages</a> · <a href="#customize">Customize</a>
+</p>
 
 > [!CAUTION]
 > Install and restow overwrite conflicting files under `$HOME` **with no backup**
@@ -87,7 +89,12 @@ the postinstall *is* the install. Verb and policy reference: [`docs/usage.md`](d
 
 ## Customize
 
-Edit the repo, then `./dot stow` to relink:
+Edit the repo, then run `./dot stow` to link your configs into `~`:
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/img/dotfiles-flow-dark.svg">
+  <img alt="Make yourself at home: edit the repo, then run ./dot stow to link your configs into your home directory" src="docs/img/dotfiles-flow-light.svg" width="760">
+</picture>
 
 - Shared: [`home/`](home/) — including Fish ([`config.fish`](home/.config/fish/config.fish)), Git, nvim, agent skills
 - Arch desktop: [`home-arch/`](home-arch/) — monitors in [`hypr-user.lua`](home-arch/.config/caelestia/hypr-user.lua), night light in [`hypr-vars.lua`](home-arch/.config/caelestia/hypr-vars.lua) (`automaticNightLight`; <kbd>Super</kbd>+<kbd>Shift</kbd>+<kbd>N</kbd> toggles anytime)

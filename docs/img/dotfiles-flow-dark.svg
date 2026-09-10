@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="360" viewBox="0 0 1200 360" role="img" aria-labelledby="dft-a dft-d">
+<title id="dft-a">Make yourself at home</title>
+<desc id="dft-d">Three-step illustration: edit the repo, link it with dot stow, live in your home directory.</desc>
+<defs>
+<linearGradient id="dfDeskD" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0" stop-color="#241C14"/><stop offset="1" stop-color="#14100C"/>
+</linearGradient>
+<pattern id="dfDotsD" width="26" height="26" patternUnits="userSpaceOnUse">
+<circle cx="3" cy="3" r="1.3" fill="#4A4238" opacity="0.55"/>
+</pattern>
+</defs>
+<rect x="0" y="0" width="1200" height="360" fill="url(#dfDeskD)"/>
+<rect x="0" y="0" width="1200" height="360" fill="url(#dfDotsD)"/>
+<rect x="300" y="50" width="60" height="5" fill="#FB923C"/>
+<text x="600" y="62" text-anchor="middle" font-family="Liberation Serif, Noto Serif, DejaVu Serif, serif" font-style="italic" font-size="32" fill="#E9DFCE">Make yourself at home</text>
+<rect x="840" y="50" width="60" height="5" fill="#2DD4BF"/>
+<!-- station 1: edit the repo -->
+<g>
+<rect x="144" y="109" width="280" height="160" rx="10" fill="#000000" opacity="0.45"/>
+<rect x="140" y="105" width="280" height="160" rx="10" fill="#2A231B" stroke="#A8A29E" stroke-width="1.8" stroke-dasharray="7 5"/>
+<rect x="140" y="105" width="280" height="26" rx="10" fill="#A8A29E"/><rect x="140" y="121" width="280" height="10" fill="#A8A29E"/>
+<circle cx="168" cy="191" r="12" fill="none" stroke="#6B6257" stroke-width="1.6"/>
+<text x="168" y="196" text-anchor="middle" font-family="Liberation Mono, Noto Sans Mono, DejaVu Sans Mono, monospace" font-size="14" fill="#A8A29E">1</text>
+<g transform="translate(292,168)" stroke="#D6CDBD" stroke-width="2.5" fill="none">
+<path d="M-40,-12 h24 l7,9 h29 v30 h-60 Z"/>
+</g>
+<text x="280" y="234" text-anchor="middle" font-family="Liberation Mono, Noto Sans Mono, DejaVu Sans Mono, monospace" font-size="40" font-weight="bold" fill="#FAF6EF">repo</text>
+<text x="280" y="256" text-anchor="middle" font-family="Liberation Mono, Noto Sans Mono, DejaVu Sans Mono, monospace" font-size="14" letter-spacing="2" fill="#A8A29E">YOU EDIT</text>
+</g>
+<!-- station 2: link it -->
+<g>
+<rect x="464" y="109" width="280" height="160" rx="10" fill="#000000" opacity="0.45"/>
+<rect x="460" y="105" width="280" height="160" rx="10" fill="#2A231B" stroke="#A8A29E" stroke-width="1.8" stroke-dasharray="7 5"/>
+<rect x="460" y="105" width="280" height="26" rx="10" fill="#FB923C"/><rect x="460" y="121" width="280" height="10" fill="#FB923C"/>
+<circle cx="488" cy="191" r="12" fill="none" stroke="#6B6257" stroke-width="1.6"/>
+<text x="488" y="196" text-anchor="middle" font-family="Liberation Mono, Noto Sans Mono, DejaVu Sans Mono, monospace" font-size="14" fill="#A8A29E">2</text>
+<g transform="translate(612,168)" stroke="#D6CDBD" stroke-width="2.5" fill="none">
+<circle cx="-14" cy="0" r="14"/><circle cx="14" cy="0" r="14"/>
+</g>
+<text x="600" y="234" text-anchor="middle" font-family="Liberation Mono, Noto Sans Mono, DejaVu Sans Mono, monospace" font-size="40" font-weight="bold" fill="#FAF6EF">./dot stow</text>
+<text x="600" y="256" text-anchor="middle" font-family="Liberation Mono, Noto Sans Mono, DejaVu Sans Mono, monospace" font-size="14" letter-spacing="2" fill="#A8A29E">LINK TREES</text>
+</g>
+<!-- station 3: live in your home -->
+<g>
+<rect x="784" y="109" width="280" height="160" rx="10" fill="#000000" opacity="0.45"/>
+<rect x="780" y="105" width="280" height="160" rx="10" fill="#33291D" stroke="#8A8171" stroke-width="2"/>
+<rect x="780" y="105" width="280" height="26" rx="10" fill="#FCD34D"/><rect x="780" y="121" width="280" height="10" fill="#FCD34D"/>
+<circle cx="808" cy="191" r="12" fill="none" stroke="#6B6257" stroke-width="1.6"/>
+<text x="808" y="196" text-anchor="middle" font-family="Liberation Mono, Noto Sans Mono, DejaVu Sans Mono, monospace" font-size="14" fill="#A8A29E">3</text>
+<g transform="translate(932,166)" stroke="#D6CDBD" stroke-width="2.5" fill="none">
+<path d="M-30,4 L0,-18 L30,4 V26 h-60 Z"/><path d="M-6,26 V12 H6 V26"/>
+</g>
+<text x="920" y="234" text-anchor="middle" font-family="Liberation Mono, Noto Sans Mono, DejaVu Sans Mono, monospace" font-size="40" font-weight="bold" fill="#FAF6EF">~ linked</text>
+<text x="920" y="256" text-anchor="middle" font-family="Liberation Mono, Noto Sans Mono, DejaVu Sans Mono, monospace" font-size="14" letter-spacing="2" fill="#A8A29E">YOUR HOME</text>
+</g>
+<!-- chevrons -->
+<g stroke="#8A8171" stroke-width="2.4" fill="none" stroke-linecap="round">
+<path d="M428,185 h18 m-8,-8 l8,8 l-8,8"/>
+<path d="M748,185 h18 m-8,-8 l8,8 l-8,8"/>
+</g>
+<!-- cutting-mat baseline -->
+<line x1="60" y1="305" x2="1140" y2="305" stroke="#57534E" stroke-width="1.6" opacity="0.7"/>
+<g stroke="#57534E" stroke-width="1.4" opacity="0.55">
+<line x1="140" y1="305" x2="140" y2="313"/><line x1="280" y1="305" x2="280" y2="313"/><line x1="420" y1="305" x2="420" y2="313"/><line x1="560" y1="305" x2="560" y2="313"/><line x1="700" y1="305" x2="700" y2="313"/><line x1="840" y1="305" x2="840" y2="313"/><line x1="980" y1="305" x2="980" y2="313"/><line x1="1060" y1="305" x2="1060" y2="313"/>
+</g>
+</svg>

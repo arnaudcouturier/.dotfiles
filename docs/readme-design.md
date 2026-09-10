@@ -1,10 +1,11 @@
 # README design record
 
-Synthesis of 36 distinct READMEs inspected 2026-09-10 against the live
+Synthesis of 60 distinct READMEs inspected 2026-09-10 against the live
 `matiassingers/awesome-readme` `## Examples` showcase (catalogue HEAD
-`2336159eff5d`), 12 per researcher across cohorts 0/1/2 mod 3. Zero exact
-`owner/repo` overlaps between cohorts (nearest pairs are same-owner,
-different repos). Working notes consolidated below; scratch files removed.
+`2336159eff5d`): 36 originals plus 24 new (12 showcase-visuals, 12 SVG
+illustration). Zero exact `owner/repo` overlaps across all three sets
+(nearest pair is same-owner, different repos:
+`lobehub/sd-webui-lobe-theme` vs `lobehub/lobe-chat`).
 
 ## Source table (pattern observed → adopted / rejected)
 
@@ -46,6 +47,30 @@ different repos). Working notes consolidated below; scratch files removed.
 | 34 | [emalderson/ThePhish](https://github.com/emalderson/ThePhish#readme) | numbered data-flow; fast vs scratch paths | 508-line front-page manual |
 | 35 | [FileShot/FileShotZKE](https://github.com/FileShot/FileShotZKE#readme) | zero-badge lede; ≤3-column tables | front-page scope creep |
 | 36 | [gofiber/fiber](https://github.com/gofiber/fiber#readme) | min-version first; Philosophy/Limits | sponsors between tagline and install |
+| 37 | [ArmynC/ArminC-AutoExec](https://github.com/ArmynC/ArminC-AutoExec#readme) | hero-as-action + gradient wordmark in one SVG; captioned `(Preview)` | svgjs bloat, 11-link nav, brochure comparison table |
+| 38 | [Grigorij-Dudnik/Clean-Coder-AI](https://github.com/Grigorij-Dudnik/Clean-Coder-AI#readme) | one honest hand-drawn system diagram beats paragraphs | star-begging, broken relative srcs, comparison table |
+| 39 | [gui-cs/Terminal.Gui](https://github.com/gui-cs/Terminal.Gui#readme) | left-pitch / right-proof split; real-numbers strip; link-out depth | 15 MB GIF first paint, 11-bullet wall |
+| 40 | [Hexworks/zircon](https://github.com/Hexworks/zircon#readme) | fence-then-literal-output pairing per claim | CDN hosting, docs-link sprawl |
+| 41 | [htmlhint/HTMLHint](https://github.com/htmlhint/HTMLHint#readme) | split editorial/terminal hero grammar; install split by intent | avatar walls, shields-before-nav |
+| 42 | [hywax/mafl](https://github.com/hywax/mafl#readme) | layered flat mark re-tinting light/dark; theme proof as image | emoji wall, triple install inline |
+| 43 | [iharsh234/WebApp](https://github.com/iharsh234/WebApp#readme) | per-screen proof under its heading | screenshot-as-title, table lede, return promise |
+| 44 | [karan/joe](https://github.com/karan/joe#readme) | per-verb transcript + overwrite/append distinction | borrowed header art, imgur hosting, output dump inline |
+| 45 | [L0garithmic/FastColabCopy](https://github.com/L0garithmic/FastColabCopy#readme) | small mark + quantified lede + one full-bleed proof; flags table | stock shields, caveats buried at bottom |
+| 46 | [lobehub/sd-webui-lobe-theme](https://github.com/lobehub/sd-webui-lobe-theme#readme) | pill-labeled staged captures; `back-to-top`; `picture` dark/light swap | shield wall, contrib widgets, sponsor PNG |
+| 47 | [ma-shamshiri/Pacman-Game](https://github.com/ma-shamshiri/Pacman-Game#readme) | one divider atom for rhythm; per-scenario proof | repeated strips, borrowed character, social shields |
+| 48 | [MananTank/radioactive-state](https://github.com/MananTank/radioactive-state#readme) | small mark where the folder is the product; GIF-in-`details` valve | coverage badges, essay length |
+| 49 | [yeaight7/awesome-ai-devtools](https://github.com/yeaight7/awesome-ai-devtools#readme) | taxonomy in the art: title left, domain cards right | dark-only, missing `title`/`desc` |
+| 50 | [voltagent/voltagent](https://github.com/voltagent/voltagent#readme) | hero sets width; `h3` + nav wayfinding; `picture` light/dark swap | badge cluster, screenshot bulk |
+| 51 | [thelounge/thelounge](https://github.com/thelounge/thelounge#readme) | logo-as-`h1` capped 300 px; one capped screenshot; `h1`/`h3`/nav hierarchy | shields between art and choice |
+| 52 | [sultan99/react-on-lambda](https://github.com/sultan99/react-on-lambda#readme) | original scene arguing the thesis; small mark + narrative panel | missing `alt`, badge row before thesis |
+| 53 | [ryanoasis/nerd-fonts](https://github.com/ryanoasis/nerd-fonts#readme) | split `h1`/`h2` lockup; outlined display type; captioned data diagram | 1.38 MB diagram weight, default diagram title |
+| 54 | [release-it/release-it](https://github.com/release-it/release-it#readme) | right-floated demo beside the list; CSS-motion-only; real transcripts only | fake status panels |
+| 55 | [Redocly/redoc](https://github.com/Redocly/redoc#readme) | canonical `picture` block; sentence `alt`; hero-as-door | third-party badge dependency |
+| 56 | [PostHog/posthog](https://github.com/PostHog/posthog#readme) | operator-at-controls scene capped ~350 px; tables carry detail | shield cluster, oversized source |
+| 57 | [lobehub/lobe-chat](https://github.com/lobehub/lobe-chat#readme) | banner-as-link; one `picture` idiom everywhere; fixed brand widths | ~30 shields, contrib wall, stat thumbnails |
+| 58 | [httpie/cli](https://github.com/httpie/cli#readme) | single-hue mark; color-is-function per surface; 100 px logo + tagline in `h2` | uncapped full-width animation, badge row |
+| 59 | [hmpl-language/hmpl](https://github.com/hmpl-language/hmpl#readme) | 460 px lockup; 100 px ecosystem icon row; dual-`source` `picture` | shield row, tokenized third-party URLs |
+| 60 | [gowebly/gowebly](https://github.com/gowebly/gowebly#readme) | two-SVG brand system (mark + banner); outlined type; adaptive chart | share badges, flag links in hero |
 
 ## Content constraints (from the pre-synthesis audit)
 
@@ -59,23 +84,38 @@ as user restrictions.
 
 ## Design decisions
 
-1. **Compact editorial field-guide with two distro doors** — scope table plus
-   per-distro setup fences up front (slate/sniffnet/dbt/doom), not a banner or
-   showcase. The only choice a reader makes is which table row they are.
-2. **Small original dual-mode hero, imported** — concept-B masthead
-   (tagline "Shared tools. Separate desktops.") as
+1. **Compact visual field-guide with two distro doors** — scope plus
+   per-distro setup fences up front (slate/sniffnet/dbt/doom), not a
+   showcase. The hero alone earns the top spot; the supporting figure
+   lives after quickstart so setup stays above the fold. The only choice
+   a reader makes is which distro door they are.
+2. **Rich original dual-mode hero, imported (Workbench)** — tactile fanned
+   config cards plus command ticket plus symlink twine, warm ink on paper
+   (light) / warm paper on ink (dark), as
    `docs/img/dotfiles-hero-{light,dark}.svg`, swapped via the
    GitHub-supported `prefers-color-scheme` `picture` pattern inside a
-   centered `h1`. Zero badges, zero screenshots.
-3. **Progressive disclosure** — homepage (scope, safety, quickstart, commands,
+   centered `h1` with sentence `alt` plus SVG `title`/`desc`. Flat fills
+   re-tinted light/dark (mafl), outlined display type or system fonts only
+   (nerd-fonts/gowebly), capped width readable at 390 px (thelounge/hmpl).
+   Zero badges, zero screenshots, zero fake terminal.
+3. **One supporting figure after quickstart, never stacked with the hero** —
+   `docs/img/dotfiles-flow-{light,dark}.svg` at Customize: three stations
+   only, edit repo → `./dot stow` → linked `~/` (bundle is not a station).
+   Text and `alt` state the same three stations with no fake statuses; the
+   figure replaces the redundant source-table and running prose, while the
+   three source-path bullets plus monitor/night-light links stay in text.
+   Sentence `alt`, light fallback `img`, compositionally identical variants
+   differing only in fills (Redocly/lobe/hmpl); staged captures only from
+   real installs (lobehub/mafl).
+4. **Progressive disclosure** — homepage (scope, safety, quickstart, commands,
    customize) → `docs/usage.md` (operator reference) → `docs/arch-coverage.md`
    and bundle comments (history/rationale). Verb matrix, fingerprint, step
    internals, and alias mechanics live one click down, never inline.
-4. **Safety rides with the command** — CAUTION (no-backup + Git identity) before
+5. **Safety rides with the command** — CAUTION (no-backup + Git identity) before
    the first fence; DM/Limine contracts beside `arch-setup`
    (shallow-backup/changelog-generator honesty); `--only`, NVIDIA scoping, and
    the fresh-host `arch-check` preview (which lives in the guide, not the
    paste block) stated where used.
-5. **Dry-operator voice, one quiet line** — 2-line pitch naming the repo,
+6. **Dry-operator voice, one quiet line** — 2-line pitch naming the repo,
    5-anchor nav, tables with "run it when" clauses; the single aside is
    "Re-running it is the repair path." No brochure energy.
