@@ -40,6 +40,9 @@ repo "mullvad-vpn" # Mullvad VPN client
 repo "nextcloud-client" # Nextcloud desktop file-sync client
 repo "tailscale" # mesh VPN
 repo "openai-codex" # OpenAI Codex CLI
+repo "micro" # micro terminal editor (upstream micro component stays disabled; neovim is the only editor target)
+repo "btop" # system monitor (upstream btop component stays disabled; its workspace launcher hardcodes foot vs kept ghostty)
+repo "code" # VS Code, MIT build from extra (upstream vscode component stays disabled; no managed settings/extension)
 
 # Applications from the AUR
 aur "pi-coding-agent-bin" # pi coding agent CLI (prebuilt, no source build)
@@ -51,6 +54,7 @@ aur "proton-mail-bin" # Proton Mail and Calendar (the source build's sharp
                       # repack of Proton's own build)
 aur "equibop-git" # Equibop Discord client, git build tracking Equicord upstream (provides/conflicts equibop, so exactly one client installs)
 aur "chatgpt-desktop" # ChatGPT desktop app (repack of OpenAI's Linux binary)
+aur "spotify" # Spotify client, proprietary repack (upstream spotify component stays disabled; no spicetify theming)
 aur "opencode-beta" # OpenCode V2 beta (binary opencode2; stable opencode is a different binary)
 
 # Applications from the MEGA vendor repository (lib/arch-mega.sh configures
@@ -86,10 +90,17 @@ repo "ydotool" # automation backend for desktop keybinds
 # File manager (Caelestia SUPER+E target plus archive and thumbnail support)
 repo "thunar" # file manager
 repo "gvfs" # virtual filesystem support for Thunar
+repo "gvfs-mtp" # phone (MTP) support in Thunar
+repo "gvfs-smb" # network share (SMB) support in Thunar
 repo "tumbler" # thumbnail service
 repo "thunar-volman" # removable media management
 repo "thunar-archive-plugin" # archive context menu for Thunar
 repo "xarchiver" # archive manager
+repo "unzip" # zip extraction back-end for xarchiver
+repo "7zip" # 7z archive back-end for xarchiver (p7zip's successor in extra)
+repo "unrar" # RAR extraction back-end for xarchiver
+repo "ntfs-3g" # NTFS read/write filesystem support
+repo "exfatprogs" # exFAT tools for USB sticks and SD cards
 repo "ffmpegthumbnailer" # video thumbnails
 # Theming (what Caelestia executes or names at runtime)
 repo "gnome-keyring" # secret storage started by Caelestia at session start

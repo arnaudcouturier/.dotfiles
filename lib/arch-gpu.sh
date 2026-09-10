@@ -213,8 +213,17 @@ arch_gpu_verify() {
         done
         ;;
       nvidia)
-        pacman -Q nvidia-open nvidia-open-lts nvidia-open-dkms nvidia-580xx-dkms 2>/dev/null | grep -q . \
-          || { log_error 'No NVIDIA kernel module package found.'; failed=1; }
+        # One probe per package: `pacman -Q` with several names exits
+        # non-zero when any of them is missing, which pipefail would read
+        # as "none installed" even when one alternative is present.
+        local nvidia_found=0 nvidia_pkg
+        for nvidia_pkg in nvidia-open nvidia-open-lts nvidia-open-dkms nvidia-580xx-dkms; do
+          if pacman -Q -- "${nvidia_pkg}" >/dev/null 2>&1; then
+            nvidia_found=1
+            break
+          fi
+        done
+        ((nvidia_found)) || { log_error 'No NVIDIA kernel module package found.'; failed=1; }
         pacman -Q -- libva-nvidia-driver >/dev/null 2>&1 || { log_error 'Missing libva-nvidia-driver.'; failed=1; }
         ;;
     esac

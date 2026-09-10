@@ -138,11 +138,22 @@ test_arch_assert_contains "${TEST_ARCH_HOME}/.config/hypr/hyprland/execs.lua" \
 
 # --- D2: installer argv pins the helper and the component contract. ---
 test_arch_assert_contains "$(test_arch_calls_log)" '--aur-helper yay' 'D2: AUR helper pinned to yay'
-test_arch_assert_contains "$(test_arch_calls_log)" '--disable-components firefox,fish,starship,fastfetch,foot,micro,btop' 'D3: second terminal/editor and detach hazards disabled'
+test_arch_assert_contains "$(test_arch_calls_log)" '--disable-components firefox,fish,starship,fastfetch,foot,micro,btop,discord,spotify,vscode,vscodium,zed,todoist,zen' 'D3: second terminal/editor, detach hazards, and excluded app components disabled'
 test_arch_assert_contains "$(test_arch_calls_log)" '--enable-components uwsm,nvim' 'only contracted components enabled'
 test_arch_assert_contains "$(test_arch_calls_log)" '--noconfirm' 'non-interactive invocation'
-for excluded in spotify vscode vscodium discord; do
-  if grep -- '^caelestia install ' "$(test_arch_calls_log)" | grep -qw -- "${excluded}"; then
+# Excluded app components must be explicitly disabled (never enabled): discord
+# is load-bearing here — its equibop-bin conflicts with the bundle's
+# equibop-git (Provides/Conflicts equibop) and would prompt `Remove
+# equibop-git?`, blocking the non-interactive run.
+installer_line="$(grep -- '^caelestia install --noconfirm' "$(test_arch_calls_log)" | head -n1)"
+disable_part="${installer_line#*--disable-components }"
+disable_part="${disable_part%% --*}"
+enable_part="${installer_line#*--enable-components }"
+enable_part="${enable_part%% --*}"
+for excluded in discord spotify vscode vscodium zed todoist zen; do
+  grep -qw -- "${excluded}" <<<"${disable_part}" \
+    || test_arch_die "installer must disable excluded app: ${excluded}"
+  if grep -qw -- "${excluded}" <<<"${enable_part}"; then
     test_arch_die "installer enables excluded app: ${excluded}"
   fi
 done

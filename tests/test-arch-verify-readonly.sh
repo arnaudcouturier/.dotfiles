@@ -35,7 +35,7 @@ done
 # shellcheck source=/dev/null
 set -- help
 source "${TEST_ARCH_REPO_ROOT}/dot" >/dev/null
-for module in arch-guard arch-system arch-gpu arch-snapshots arch-greeter arch-limine arch-video; do
+for module in arch-guard arch-system arch-gpu arch-gaming arch-snapshots arch-greeter arch-limine arch-video; do
   # shellcheck source=/dev/null
   source "${TEST_ARCH_REPO_ROOT}/lib/${module}.sh"
 done
@@ -59,6 +59,7 @@ run_verify() {
 export TEST_FINDMNT_FSTYPE=ext4
 run_verify system-ext4 arch_system_verify
 run_verify gpu arch_gpu_verify
+run_verify gaming arch_gaming_verify
 run_verify snapshots-ext4 arch_snapshots_verify
 run_verify greeter arch_greeter_verify
 run_verify limine arch_limine_verify

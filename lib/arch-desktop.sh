@@ -361,8 +361,14 @@ arch_desktop_caelestia_tree_complete() {
 # firefox (Brave Origin system), fish/starship/fastfetch (their entries
 # would detach shared stowed configs), foot/micro (second terminal/editor
 # vs kept ghostty/neovim), btop (its workspace launcher hardcodes foot).
-# Never discord/spotify/vscode/vscodium/zed/todoist/zen (absent or excluded
-# apps; discord theme still arrives via scheme-time apply_discord).
+# Explicitly disable every optional app component we never want the
+# installer to manage (discord/spotify/vscode/vscodium/zed/todoist/zen):
+# they default off today, so this is a no-op now, but it holds if upstream
+# ever flips one to default on. discord is load-bearing: its package is
+# equibop-bin, which Provides/Conflicts equibop against the bundle's
+# equibop-git — letting it install prompts `Remove equibop-git?` and blocks
+# the non-interactive run. Discord theming still arrives via scheme-time
+# apply_discord plus arch_desktop_enable_equibop_theme, never via install.
 # --aur-helper yay is deterministic (repo standard; autodetection would take
 # paru when present). --noconfirm fits the scripted context (defaults,
 # incl. the one-time ~/.config backup; pause skipped). No deploy-only flag
@@ -381,7 +387,7 @@ arch_desktop_run_caelestia_installer() {
   local -a installer_args=(
     install --noconfirm
     --aur-helper yay
-    --disable-components "firefox,fish,starship,fastfetch,foot,micro,btop"
+    --disable-components "firefox,fish,starship,fastfetch,foot,micro,btop,discord,spotify,vscode,vscodium,zed,todoist,zen"
     --enable-components "uwsm,nvim"
   )
   caelestia "${installer_args[@]}" \

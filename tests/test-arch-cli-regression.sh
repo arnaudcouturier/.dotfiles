@@ -64,7 +64,7 @@ source "${DOT}" >/dev/null
 test_arch_arm_cleanup
 export DISTRO BUNDLE_FILE
 
-test_arch_assert_eq $'system\ngpu\nsnapshots\ndesktop\ngreeter\nvideo\nlimine' \
+test_arch_assert_eq $'system\ngpu\ngaming\nsnapshots\ndesktop\ngreeter\nvideo\nlimine' \
   "$(arch_selected_steps all)" 'canonical step order'
 test_arch_assert_eq $'system\nvideo' \
   "$(arch_selected_steps 'video,system')" 'selection returns canonical order'

@@ -64,8 +64,9 @@ Rerun `init` to reapply the setup.
 
 ## Arch system
 
-`arch-setup` runs `system → gpu → snapshots → desktop → greeter → video → limine`
-in order. `--only` filters steps, never the bundle install or stow.
+`arch-setup` runs `system → gpu → gaming → snapshots → desktop → greeter → video → limine`
+in order. `--only` filters steps, never the bundle install or stow. `gaming`
+is opt-in: it asks once (default No) and skips quietly when declined.
 
 > [!NOTE]
 > `arch-setup` refuses to replace an existing display manager unless

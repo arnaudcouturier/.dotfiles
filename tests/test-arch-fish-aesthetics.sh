@@ -78,7 +78,7 @@ test_arch_assert_contains "${OVERLAY}/.config/caelestia/starship-caelestia.toml"
 test_arch_assert_contains "${OVERLAY}/.config/caelestia/starship-caelestia.toml" "1ee7a98" 'overlay starship must pin upstream revision'
 
 # --- Installer still disables broad upstream components (no re-enable). ---
-test_arch_assert_contains "${TEST_ARCH_REPO_ROOT}/lib/arch-desktop.sh" '--disable-components "firefox,fish,starship,fastfetch,foot,micro,btop"' 'installer must keep fish/starship/fastfetch disabled'
+test_arch_assert_contains "${TEST_ARCH_REPO_ROOT}/lib/arch-desktop.sh" '--disable-components "firefox,fish,starship,fastfetch,foot,micro,btop,discord,spotify,vscode,vscodium,zed,todoist,zen"' 'installer must keep fish/starship/fastfetch disabled and excluded apps (discord equibop-bin vs equibop-git) off'
 test_arch_assert_contains "${TEST_ARCH_REPO_ROOT}/lib/arch-desktop.sh" '--enable-components "uwsm,nvim"' 'installer must enable only uwsm,nvim'
 
 # --- Night light off. ---

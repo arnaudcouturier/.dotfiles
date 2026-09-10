@@ -7,8 +7,8 @@ are excluded (Fedora unchanged by order). Every requested feature below
 lands somewhere: nothing was quietly omitted.
 
 Requested set: optimizations, conditional GPU support, conditional btrfs
-snapshots, greetd/sysc-greet, Hyprland/Caelestia, Limine, video configs —
-from minimal archinstall with existing Limine and no DE.
+snapshots, greetd/sysc-greet, Hyprland/Caelestia, Limine, video configs,
+opt-in gaming — from minimal archinstall with existing Limine and no DE.
 
 ## Subsystem matrix
 
@@ -17,7 +17,8 @@ from minimal archinstall with existing Limine and no DE.
 | `modules/00-base.sh`: multilib, pacman Color/VerbosePkgLists/ParallelDownloads, `-Syu base-devel git`, paru bootstrap with PKGBUILD review | Adapted | `lib/arch-system.sh` (`arch_system_setup_pacman_options`): same options, one `.dotfiles-backup`, `pacman-conf` revalidation. ILoveCandy dropped (cosmetic, unrequested). Helper stays `yay`, not paru: switching helpers contradicts the repo standard and `doctor`. |
 | `packages/{base,desktop,audio,shell}.txt` stable sets | Adapted into bundle | `packages/arch.bundle` infrastructure section: desktop core, file manager, theming, fonts, PipeWire, network/hardware, recovery basics. Package-for-package rationale lives in the trailing comments. |
 | `packages/apps.txt`: code, brave-bin, signal/telegram, qemu, bluetui, glab | Excluded | Kept app selection: no archive browsers, editors, chat clients, or VMs. `github-cli`, `mullvad-vpn`, `nextcloud-client`, `qbittorrent`, `tailscale` were already bundled and stay. |
-| `packages/dev.txt` (python/uv/go), `winboat.txt` + `winboat-bin`, gaming stack, `hyprmod`, `protonplus`, `vkbasalt`, `vm-curator` | Excluded | Not requested. No toolchains, Windows layer, or gaming to inflate coverage. |
+| `packages/dev.txt` (python/uv/go), `winboat.txt` + `winboat-bin`, `hyprmod`, `vm-curator` | Excluded | Not requested. No toolchains, Windows layer, or VMs to inflate coverage. |
+| `packages/gaming.txt` + gaming AUR trio (`protonplus`, `vkbasalt`, `lib32-vkbasalt`) | Opt-in step | `lib/arch-gaming.sh` (`gaming` step, between `gpu` and `snapshots`): asks once, default No, silent skip without a terminal; repairs without asking once selected. Absent verifies clean, partial fails. GameMode group follows the package. Requires multilib (system step owns it). |
 | `packages/aur.txt`: caelestia-cli, bibata-cursor-theme-bin, sysc-greet | Included | `arch.bundle` AUR section: installer CLI, cursor named by desktop overrides, greeter. |
 | `packages/shell.txt`, `dev` shell overlap | Converged | Already bundled (fish/starship/eza/zoxide/fzf/fd/ripgrep/bat); nothing to add. |
 | `modules/20-gpu.sh` + PCI-ID data | Adapted | `lib/arch-gpu.sh`: per-vendor stacks incl. hybrids, open vs DKMS vs AUR 580xx with yay review warning, per-kernel headers, `mkinitcpio -P`, `WORKSTATION_GPU` override for testing. The 160-ID legacy list is vendored verbatim as `lib/arch-nvidia-legacy-pciids.txt` (archive data from RPM Fusion nvidia-kmod 610.57.04, freshness rule in its header — deterministic vendor data, not machine-specific). Flavor mirrors the archive (`proprietary` on list hit, `unsupported` below device 0x1e00, `open` above); `unsupported` dies with the PCI IDs BEFORE any package write. No desktop environment variables here (overlay owns them, conditional only). |
@@ -123,8 +124,8 @@ other editors.
 
 The Caelestia installer enables its default components (exact argv:
 `caelestia install --noconfirm --aur-helper yay --disable-components
-"firefox,fish,starship,fastfetch,foot,micro,btop" --enable-components
-"uwsm,nvim"` — no vendor skip-packages flag exists). Every package the
+"firefox,fish,starship,fastfetch,foot,micro,btop,discord,spotify,vscode,vscodium,zed,todoist,zen"
+--enable-components "uwsm,nvim"` — no vendor skip-packages flag exists). Every package the
 defaults pull is now explicit in `packages/arch.bundle`, which the installer
 skips when already installed, so the bundle is the single runtime recipe:
 `caelestia-shell` (the shell itself; cli alone only installs it),
@@ -132,5 +133,10 @@ skips when already installed, so the bundle is the single runtime recipe:
 `lazygit`, `ydotool`, `hyprpicker`, `frameworkintegration`, `qtengine`,
 `darkly-bin`, `papirus-folders`, `git`. Disabled by flag, never installed:
 `foot`, `micro`, `btop` (no second terminal/editor; `btop` stays out because
-the workspace launcher hardcodes `foot`). Routes verified per package
+the workspace launcher hardcodes `foot`) plus every optional app component
+(`discord,spotify,vscode,vscodium,zed,todoist,zen`): `discord` is load-bearing,
+its `equibop-bin` Provides/Conflicts `equibop` against the bundle's
+`equibop-git` and would prompt `Remove equibop-git?`, blocking the
+non-interactive run (Discord theming still arrives via scheme-time
+`apply_discord` plus the home-side Equibop theme enable). Routes verified per package
 (official extra vs AUR); `dot` owns the full recipe.
