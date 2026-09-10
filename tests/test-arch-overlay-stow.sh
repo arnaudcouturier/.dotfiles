@@ -1,9 +1,13 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC1091 # sandbox harness computes source paths at runtime; static following is impossible by design
 # Decided install mechanism: the overlay deploys via
-# `stow -R --no-folding` into $HOME. Proves source immutability
-# (home-arch/ checksums identical), idempotent re-stow, sandbox-only
-# links, and a narrow live-home snapshot that must not move.
+# `stow -R --no-folding` into $HOME for the stowed set, while the two
+# compositor-owned user files (.config/caelestia/hypr-user.lua,
+# hypr-vars.lua) are NEVER stowed: raw stow carries the same --ignore the
+# production paths use, and the desktop module deploys them as real files.
+# Proves source immutability (home-arch/ checksums identical), idempotent
+# re-stow, sandbox-only links, user files untouched by stow, and a narrow
+# live-home snapshot that must not move.
 set -euo pipefail
 
 TEST_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
@@ -35,10 +39,14 @@ done
 # Source immutability baseline (content checksums, sorted).
 find "${OVERLAY}" -type f -exec sha256sum -- {} + | sort -k2 >"${TEST_ARCH_SANDBOX}/source-before.txt"
 
-# The decided mechanism, twice: install then repair-path re-run.
-stow -R --no-folding -d "${TEST_ARCH_REPO_ROOT}" -t "${TEST_ARCH_HOME}" home-arch
+# The decided mechanism, twice: install then repair-path re-run. The
+# --ignore literal mirrors production (dot's stow_arch_overlay and
+# arch_desktop_install_overlay): compositor-owned user files are deployed
+# as real files by the desktop module, never stowed. Keep in sync.
+STOW_IGNORE='(^|/)\.config/caelestia/hypr-(user|vars)\.lua$'
+stow -R --no-folding --ignore="${STOW_IGNORE}" -d "${TEST_ARCH_REPO_ROOT}" -t "${TEST_ARCH_HOME}" home-arch
 find "${TEST_ARCH_HOME}" -mindepth 1 | sort >"${TEST_ARCH_SANDBOX}/deployed-first.txt"
-stow -R --no-folding -d "${TEST_ARCH_REPO_ROOT}" -t "${TEST_ARCH_HOME}" home-arch
+stow -R --no-folding --ignore="${STOW_IGNORE}" -d "${TEST_ARCH_REPO_ROOT}" -t "${TEST_ARCH_HOME}" home-arch
 find "${TEST_ARCH_HOME}" -mindepth 1 | sort >"${TEST_ARCH_SANDBOX}/deployed-second.txt"
 
 # Idempotent: the second run changes nothing.
@@ -50,11 +58,19 @@ find "${OVERLAY}" -type f -exec sha256sum -- {} + | sort -k2 >"${TEST_ARCH_SANDB
 cmp -s -- "${TEST_ARCH_SANDBOX}/source-before.txt" "${TEST_ARCH_SANDBOX}/source-after.txt" \
   || test_arch_die 'stow modified the overlay source'
 
-# Sandbox-only links: every deployed symlink resolves inside the sandbox
-# home or the repo overlay, and every source file landed.
+# Sandbox-only links: every STOWED file landed as a symlink resolving inside
+# the sandbox home or the repo overlay, and every source file landed. The
+# two compositor-owned user files are deployed as real files by the desktop
+# module instead: raw stow must leave them entirely alone (keep this skip
+# list in sync with arch_desktop_deployed_relpaths).
 while IFS= read -r src; do
   rel=${src#"${OVERLAY}/"}
   target="${TEST_ARCH_HOME}/${rel}"
+  if [[ ${rel} == ./.config/caelestia/hypr-user.lua || ${rel} == ./.config/caelestia/hypr-vars.lua ]]; then
+    [[ ! -e ${target} && ! -L ${target} ]] \
+      || test_arch_die "stow touched user file ${rel} (must deploy as a real file, never stow)"
+    continue
+  fi
   [[ -L ${target} ]] || test_arch_die "deployed ${rel} is not a symlink"
   resolved="$(realpath -m -- "${target}")"
   [[ ${resolved} == "${TEST_ARCH_SANDBOX}"/* || ${resolved} == "${TEST_ARCH_REPO_ROOT}"/* ]] \

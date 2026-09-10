@@ -4,11 +4,17 @@ set -euo pipefail
 #
 # Sourced library, not a script: dot sources this file for arch-setup /
 # arch-check after lib/arch-guard.sh. Definitions only at source time; the
-# five arch_desktop_* functions below are the whole contract surface.
+# arch_desktop_* functions below are the whole contract surface (five
+# orchestrators decided by the lead contract, plus small list/predicate
+# helpers and the user-file deploy they share).
 #
 # Ownership seam:
 # - This module owns ONLY home-side desktop integration: the home-arch/
 #   overlay (stowed, Stow ownership, no backups — the repo's stow contract),
+#   except the two compositor-owned user files, which deploy as real files
+#   (copy-once, never stowed: Hyprland itself recreates them within
+#   milliseconds when missing, so no stow scan can own the path, and
+#   upstream defines both as user-edited),
 #   the Caelestia installer run and upstream tree validation, the night
 #   light patch, and home-side theme enables for kept apps. Everything runs as the desktop user: no sudo anywhere here.
 # - The lead owns dot, gating, packages, /etc and systemd, greetd, video
@@ -140,6 +146,73 @@ arch_desktop_override_relpaths() {
     '.config/ghostty/config'
 }
 
+# arch_desktop_deployed_relpaths prints the compositor-owned user files:
+# overlay paths deployed as REAL files, never stowed. Hyprland's own
+# hyprland.lua recreates these within milliseconds when missing
+# (maybe_create), so a stow pre-clean plus a slow tree scan can never own
+# the path without racing; upstream also defines both as user-edited
+# (monitor layout, default apps), which a symlink would force into the
+# repo. Internal single source for install, verify, and dot's stow/doctor
+# (dot lazy-sources this module and calls the predicate and deploy below,
+# never reimplementing them).
+arch_desktop_deployed_relpaths() {
+  printf '%s\n' \
+    '.config/caelestia/hypr-user.lua' \
+    '.config/caelestia/hypr-vars.lua'
+}
+
+# arch_desktop_is_deployed_file reports whether relpath deploys as a real
+# file instead of a stow symlink. Same shape as is_approved_override.
+arch_desktop_is_deployed_file() {
+  local rel=$1 candidate
+  while IFS= read -r candidate; do
+    [[ -n ${candidate} && ${rel} == "${candidate}" ]] && return 0
+  done < <(arch_desktop_deployed_relpaths) || true
+  return 1
+}
+
+# arch_desktop_deploy_user_files copies each deployed template to $HOME as
+# a real file. Copy-once semantics: a missing target is copied; a legacy
+# symlink to the template is converted; a compositor placeholder (empty or
+# exactly `return {}` — the only bytes maybe_create writes) is replaced.
+# Anything else is user content and is left alone, so an active monitor
+# block survives every re-run. No backups (home files never do), no sudo.
+# Dies on a missing template, a foreign symlink, or a non-file target.
+arch_desktop_deploy_user_files() {
+  arch_desktop_require_caller_interface || return 1
+  local rel template target content
+  while IFS= read -r rel; do
+    [[ -n ${rel} ]] || continue
+    template="${ARCH_DESKTOP_OVERLAY_DIR}/${rel}"
+    target="${HOME}/${rel}"
+    [[ -f ${template} && ! -L ${template} ]] \
+      || die "arch_desktop_deploy_user_files: template missing: ${template}"
+    if [[ -L ${target} ]]; then
+      if [[ "$(realpath -m -- "${target}")" == "$(realpath -m -- "${template}")" ]]; then
+        log_info "arch-desktop: converting legacy symlink ${target} to a real file"
+        rm -f -- "${target}"
+      else
+        die "arch_desktop_deploy_user_files: ${target} is a foreign symlink; refusing to deploy over it."
+      fi
+    fi
+    if [[ -e ${target} ]]; then
+      [[ -f ${target} && ! -L ${target} ]] \
+        || die "arch_desktop_deploy_user_files: ${target} is not a regular file; refusing to deploy over it."
+      content="$(cat -- "${target}")"
+      if [[ -z ${content} || ${content} == 'return {}' ]]; then
+        log_info "arch-desktop: replacing compositor placeholder ${target}"
+        cp -- "${template}" "${target}"
+      else
+        log_info "arch-desktop: keeping user file ${target}"
+      fi
+    else
+      mkdir -p -- "$(dirname -- "${target}")"
+      cp -- "${template}" "${target}"
+      log_info "arch-desktop: deployed ${target}"
+    fi
+  done < <(arch_desktop_deployed_relpaths) || true
+}
+
 # arch_desktop_is_approved_override reports whether relpath may shadow home/.
 arch_desktop_is_approved_override() {
   local rel=$1 candidate
@@ -165,11 +238,16 @@ arch_desktop_overlay_available() {
 # arch_desktop_install_overlay stows home-arch/ into $HOME with the repo's
 # stow contract: overwrite-without-backup, idempotent re-run, no sudo.
 # Pre-clean removes conflicting files and symlinks (including dangling
-# ones); a real directory collision dies like dot's own stow. A target that
+# ones) for the STOWED set only; deployed user files are owned by
+# arch_desktop_deploy_user_files below (no pre-clean touch, so a live
+# compositor can never catch the path missing). A real directory collision
+# dies like dot's own stow. A target that
 # resolves into shared home/ is an UNAPPROVED collision unless its relpath
 # is listed by arch_desktop_override_relpaths — deliberate shadows
 # (Ghostty) proceed, anything else dies loudly instead of silently
-# shadowing a shared config.
+# shadowing a shared config. The stow --ignore literal below must stay
+# identical to dot's stow_arch_overlay (stow walks the tree itself, so the
+# predicate alone cannot exclude these).
 arch_desktop_install_overlay() {
   arch_desktop_require_caller_interface || return 1
   arch_desktop_overlay_available || die 'arch_desktop_install_overlay: overlay missing; refusing a silent no-op.'
@@ -182,6 +260,10 @@ arch_desktop_install_overlay() {
   local rel target resolved
   while IFS= read -r rel; do
     [[ -n ${rel} ]] || continue
+    # Deployed user files are owned by the deploy step below: never
+    # pre-clean them (a live compositor recreates a missing path within
+    # milliseconds, which is exactly the race that aborts stow).
+    arch_desktop_is_deployed_file "${rel}" && continue
     target="${HOME}/${rel}"
     if [[ -e ${target} || -L ${target} ]]; then
       if [[ -d ${target} && ! -L ${target} ]]; then
@@ -197,8 +279,11 @@ arch_desktop_install_overlay() {
       rm -f -- "${target}"
     fi
   done < <(arch_desktop_overlay_relpaths) || true
-  stow -R --no-folding --ignore='(^|/)node_modules(/|$)' -d "${DOTFILES_DIR}" -t "${HOME}" home-arch \
+  stow -R --no-folding --ignore='(^|/)node_modules(/|$)' \
+    --ignore='(^|/)\.config/caelestia/hypr-(user|vars)\.lua$' \
+    -d "${DOTFILES_DIR}" -t "${HOME}" home-arch \
     || die 'arch_desktop_install_overlay: stow failed.'
+  arch_desktop_deploy_user_files
   log_ok 'arch-desktop: overlay stowed.'
 }
 
@@ -402,15 +487,18 @@ arch_desktop_configure_caelestia() {
   log_ok 'arch-desktop: Caelestia configured.'
 }
 
-# arch_desktop_verify_overlay is non-mutating: 0 iff every overlay file is
-# deployed as a symlink resolving into the overlay source (Stow ownership);
-# else log_error per offender plus non-zero. Never writes, no sudo.
+# arch_desktop_verify_overlay is non-mutating: 0 iff every STOWED overlay
+# file is deployed as a symlink resolving into the overlay source (Stow
+# ownership) and every DEPLOYED user file exists as a real, configured file
+# (legacy symlinks and compositor placeholders fail: rerun install).
+# Never writes, no sudo.
 arch_desktop_verify_overlay() {
   arch_desktop_require_caller_interface || return 1
   arch_desktop_overlay_available || return 1
-  local failed=0 rel source target
+  local failed=0 rel source target content
   while IFS= read -r rel; do
     [[ -n ${rel} ]] || continue
+    arch_desktop_is_deployed_file "${rel}" && continue
     source="${ARCH_DESKTOP_OVERLAY_DIR}/${rel}"
     target="${HOME}/${rel}"
     if [[ ! -L ${target} ]]; then
@@ -421,6 +509,23 @@ arch_desktop_verify_overlay() {
       failed=1
     fi
   done < <(arch_desktop_overlay_relpaths) || true
+  while IFS= read -r rel; do
+    [[ -n ${rel} ]] || continue
+    target="${HOME}/${rel}"
+    if [[ -L ${target} ]]; then
+      log_error "arch-desktop: legacy symlink (not a deployed real file): ${target}; rerun install."
+      failed=1
+    elif [[ ! -f ${target} ]]; then
+      log_error "arch-desktop: user file not deployed: ${target}; rerun install."
+      failed=1
+    else
+      content="$(cat -- "${target}")"
+      if [[ -z ${content} || ${content} == 'return {}' ]]; then
+        log_error "arch-desktop: unconfigured compositor placeholder: ${target}; rerun install."
+        failed=1
+      fi
+    fi
+  done < <(arch_desktop_deployed_relpaths) || true
   if ((failed != 0)); then
     log_error 'arch-desktop: overlay incomplete; rerun install.'
     return 1

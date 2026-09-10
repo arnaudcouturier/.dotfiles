@@ -1,11 +1,16 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC1091 # sandbox harness computes source paths at runtime; static following is impossible by design
 # Final desktop contract (orchestrator decisions, supersedes both draft
-# contracts): lib/arch-desktop.sh exposes exactly five functions and two
-# globals, installs the overlay with stow only (no copy, no $HOME backups,
-# no doctor exemption), never uses sudo, and owns no shader logic
-# (shaders belong only to lib/arch-video.sh). Failures below are the
-# desktop rewrite checklist, one line per violated decision.
+# contracts): lib/arch-desktop.sh exposes the five orchestrator functions
+# below plus small list/predicate helpers and the user-file deploy they
+# share; installs the overlay with stow for the stowed set plus copy-once
+# real-file deploy for the two compositor-owned user files (no $HOME
+# backups, no doctor exemption beyond the deployed check); never uses sudo,
+# and owns no shader logic (shaders belong only to lib/arch-video.sh).
+# The stow-only past died to a live race: Hyprland recreates the user files
+# within milliseconds when missing, so no stow scan can own those paths.
+# Failures below are the desktop rewrite checklist, one line per violated
+# decision.
 set -euo pipefail
 
 TEST_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
@@ -42,7 +47,7 @@ test_arch_arm_cleanup
 [[ ${before_home} == "$(find "${TEST_ARCH_HOME}" -mindepth 1 | sort)" ]] \
   || contract_fail 'sourcing lib/arch-desktop.sh created files under $HOME'
 
-# --- Exact public interface: five functions, two globals. ---
+# --- Exact public interface: five orchestrators, two globals. ---
 for fn in arch_desktop_overlay_available arch_desktop_install_overlay \
   arch_desktop_configure_caelestia arch_desktop_verify_overlay arch_desktop_verify_caelestia; do
   command -v "${fn}" >/dev/null 2>&1 \
@@ -63,7 +68,8 @@ if grep -nEi 'artcnn|mpv-shim|/shaders' "${DESKTOP_LIB}"; then
   contract_fail 'lib/arch-desktop.sh owns shader logic (decided: shaders live only in lib/arch-video.sh)'
 fi
 
-# --- Stow-only home ownership: stow present, copy/backup machinery absent. ---
+# --- Home ownership: stow present, backup machinery absent. Copy exists ---
+# --- only as the decided user-file deploy (cp in arch_desktop_deploy). ---
 grep -q 'stow' "${DESKTOP_LIB}" \
   || contract_fail 'lib/arch-desktop.sh never calls stow (decided: stow-only overlay install)'
 # shellcheck disable=SC2016 # literal $HOME in the diagnostic below is intentional
@@ -81,4 +87,4 @@ if ((failures > 0)); then
   printf '%d decided-contract violation(s) in lib/arch-desktop.sh.\n' "${failures}" >&2
   exit 1
 fi
-printf 'Desktop module matches the decided five-function stow contract.\n'
+printf 'Desktop module matches the decided stow-plus-deploy contract.\n'

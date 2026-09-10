@@ -25,7 +25,7 @@ from minimal archinstall with existing Limine and no DE.
 | `modules/35-snapshots.sh` | Adapted | `lib/arch-snapshots.sh`: btrfs-gated, tooling installs on demand, `root` config with `/.snapshots` refusal, timeline/cleanup timers, bootloader gap warned (Limine never removes entries, so a hand-added snapshot entry survives). |
 | `modules/40-greeter.sh` + `etc/greetd/config.toml` | Adapted | `lib/arch-greeter.sh` + `system/arch/greetd/config.toml`: niri/kitty/sysc-greet, binary-path reconcile, greeter account/groups, config backup, PAM keyring unlock (optional lines only), `85-greeter.rules` check. Incumbent-DM refusal happens FIRST, before any mutation; only `--replace-display-manager` displaces. |
 | `modules/45-caelestia.sh` (installer wrapper, tree verification, app integrations) | Split | Installer + user-runtime configuration: desktop agent inside `arch_desktop_configure_caelestia` (`lib/arch-desktop.sh`, `home-arch/`). Night-light patch concept survives as their patch function. Spotify/Spicetify and editor re-theming to non-selection editors are excluded; no wallpaper cloning — the shell uses whatever wallpaper the user picks, and the shared `~/Pictures/wallpapers/` themes stay untouched. `uwsm` is an explicit `repo` entry (Arch extra, vendor-confirmed; desktop upstream verification confirms the Caelestia manifest ships `packages=[uwsm]`). |
-| `modules/50-dotfiles.sh` (copy model) | Mechanism rejected, selection kept | Stow stays the deployer (repo standard). `dot` stows shared (skipping the two forwarding aliases everywhere) then the selected distro overlay, and prunes only provably-ours stale shared symlinks (a link resolving into shared `home/`); real files and foreign links are warned about and left. `doctor` asserts each tree against its selected source with no exemption: overlay links must resolve into `home-arch/`, and the generated Hypr tree stays outside the stowed expected set. No home backup/copy logic anywhere. |
+| `modules/50-dotfiles.sh` (copy model) | Mechanism rejected, selection kept | Stow stays the deployer (repo standard), with one narrow exception: the two compositor-owned user files (`hypr-user.lua`, `hypr-vars.lua`) deploy as real files, never stowed — Hyprland recreates a missing one within milliseconds, so no stow scan can own those paths, and upstream defines both as user-edited. `dot` stows shared (skipping the two forwarding aliases everywhere) then the selected distro overlay (skipping the two user files on Arch), the desktop module copy-deploys them once (placeholders convert, user content is never overwritten), and prunes only provably-ours stale shared symlinks (a link resolving into shared `home/`); real files and foreign links are warned about and left. `doctor` asserts each tree against its selected source: overlay links must resolve into `home-arch/`, deployed user files must exist as real configured files, and the generated Hypr tree stays outside the stowed expected set. No home backup logic anywhere. |
 | `dotfiles/caelestia/hypr-vars.lua`, `hypr-user.lua` | Adapted by desktop agent | `home-arch/.config/caelestia/`: overrides retargeted at current selection; NVIDIA env conditional on detected hardware; Arch user override carries the `hypr/input.lua` keyboard equivalent. |
 | `dotfiles/desktop/ghostty/config` | Per-distro sources | `home-arch/` Ghostty wins on Arch; `home-fedora/` carries the DMS config on Fedora; shared `home/` keeps only a forwarding alias, never stowed. |
 | `dotfiles/desktop/{gtk-3.0,gtk-4.0,environment.d}` + `hypr-keybinds` | Adapted by desktop agent | `home-arch/` verbatim carries; keybinds retargeted to `nvim in ghostty`. |
@@ -37,7 +37,7 @@ from minimal archinstall with existing Limine and no DE.
 
 ## Behavior contracts
 
-- Copy-based home deploy with `~/.config-backup` and doctor exemptions: rejected. Stow owns `$HOME`; system backup exception covers `/etc` + bootloader only.
+- Copy-based home deploy with `~/.config-backup` and doctor exemptions: rejected, with one narrow exception. Stow owns `$HOME` except the two compositor-owned user files, which copy-deploy once as real files (never overwritten, never backed up); system backup exception covers `/etc` + bootloader only.
 - Forwarding aliases instead of blanket overrides: Ghostty and `hypr/input.lua` live per-distro (`home-fedora/`, `home-arch/`), shared `home/` keeps unstowed aliases so old links resolve — never a verifier that contradicts the selected stow paths.
 - Silent desktop skip: rejected. `arch-setup` dies without `lib/arch-desktop.sh`; the greeter step re-verifies desktop first even under `--only greeter`.
 - Incumbent DM: refuse-first before any greeter mutation; enablement only with no incumbent, existing greetd, or the explicit flag. No incidental Alias takeover.
@@ -57,11 +57,12 @@ from minimal archinstall with existing Limine and no DE.
 - The `hypr/input.lua` keyboard equivalent lives in
   `home-arch/.config/caelestia/hypr-user.lua`; nothing may ever live under
   `home-arch/.config/hypr/` (upstream-deployed directory).
-- Monitor layout lives in `home-arch/.config/caelestia/hypr-user.lua`
-  (stowed to `~/.config/caelestia/hypr-user.lua` on Arch, loaded last via
-  `require("hypr-user")`); never edit the generated
+- Monitor layout lives in the deployed real file `~/.config/caelestia/hypr-user.lua`
+  (copy-deployed once from the overlay template on Arch, loaded last via
+  `require("hypr-user")`, freely editable — template updates need a manual
+  merge); never edit the generated
   `~/.config/hypr/hyprland.lua` (upstream default `hl.monitor` with
-  `preferred`/`auto`). The overlay carries only a commented `hl.monitor`
+  `preferred`/`auto`). The overlay template carries only a commented `hl.monitor`
   example — no active machine layout is committed.
 - `uwsm` is an explicit bundle entry (Arch extra); the installer enables
   the component, and verification asserts its session files.

@@ -109,8 +109,11 @@ into a partially upgraded system.
 - `home/` — shared configs, stowed everywhere except two forwarding aliases
   (Ghostty config, hypr input) that shared stow always skips.
 - `home-fedora/` — Fedora's real copies of those two paths, stowed on Fedora only.
-- `home-arch/` — Arch desktop overlay, stowed on Arch only.
-- `doctor` asserts every tree against its selected source. All three trees are
+- `home-arch/` — Arch desktop overlay, stowed on Arch only, except the two
+  compositor-owned user files (`hypr-user.lua`, `hypr-vars.lua`), which
+  deploy once as real files you may edit freely.
+- `doctor` asserts every tree against its selected source (overlay links plus
+  deployed user files). All three trees are
   yours to edit; the generated `~/.config/hypr/` tree is upstream output, not
   a source.
 - Elevation is terminal sudo only (asked once, refreshed for the run). Fish

@@ -679,14 +679,29 @@ stow_fedora_overlay() {
 # plain stow stays usable before home-arch/ lands; arch-setup itself fails
 # loudly instead (see arch_load_desktop_or_die).
 # No backup logic: same overwrite/no-backup contract as shared stow.
+# Compositor-owned user files are NOT stowed here: the desktop module owns
+# them (arch_desktop_deployed_relpaths), and this function lazy-sources it
+# and calls arch_desktop_deploy_user_files, never reimplementing the
+# deploy. The stow --ignore literal below must stay identical to
+# arch_desktop_install_overlay in lib/arch-desktop.sh.
 stow_arch_overlay() {
   [[ ${DISTRO:-} == arch ]] || return 0
   [[ -d ${ARCH_HOME_OVERLAY_DIR} ]] || { log_warn 'home-arch/ has not landed yet; skipping the Arch overlay.'; return 0; }
+  arch_source_desktop_quiet \
+    || die 'lib/arch-desktop.sh is missing but home-arch/ is present; refusing a half-managed stow.'
+  declare -F arch_desktop_is_deployed_file >/dev/null 2>&1 \
+    || die 'lib/arch-desktop.sh does not provide arch_desktop_is_deployed_file; coordinate the API before proceeding.'
+  declare -F arch_desktop_deploy_user_files >/dev/null 2>&1 \
+    || die 'lib/arch-desktop.sh does not provide arch_desktop_deploy_user_files; coordinate the API before proceeding.'
   require_command stow
   log_step "Linking home-arch/ into ${HOME} (conflicts are overwritten, no backup)"
   local src rel target
   while IFS= read -r -d '' src; do
     rel=${src#"${ARCH_HOME_OVERLAY_DIR}/"}
+    # Deployed user files are owned by the desktop module's deploy step
+    # below: never pre-clean them (a live compositor recreates a missing
+    # path within milliseconds, which is exactly the race that aborts stow).
+    arch_desktop_is_deployed_file "${rel}" && continue
     target="${HOME}/${rel}"
     [[ -e ${target} || -L ${target} ]] || continue
     [[ -d ${target} && ! -L ${target} ]] && die "Cannot stow ${rel}: ${target} is a directory."
@@ -698,7 +713,10 @@ stow_arch_overlay() {
     log_info "Overwriting ${target}"
     rm -f -- "${target}"
   done < <(arch_overlay_files)
-  stow -R --no-folding --ignore='(^|/)node_modules(/|$)' -d "${DOTFILES_DIR}" -t "${HOME}" home-arch
+  stow -R --no-folding --ignore='(^|/)node_modules(/|$)' \
+    --ignore='(^|/)\.config/caelestia/hypr-(user|vars)\.lua$' \
+    -d "${DOTFILES_DIR}" -t "${HOME}" home-arch
+  arch_desktop_deploy_user_files
   arch_prune_stale_shared_links
   log_ok 'Arch overlay stowed.'
 }
@@ -905,7 +923,7 @@ cmd_doctor() {
   fi
 
   log_step 'Checking stowed symlinks'
-  local src rel target link_failed=0
+  local src rel target content link_failed=0
   while IFS= read -r -d '' src; do
     rel=${src#"${HOME_DIR}/"}
     # Forwarding aliases are never asserted from shared home/ on any distro;
@@ -921,8 +939,15 @@ cmd_doctor() {
     fi
   done < <(home_files)
   if [[ ${DISTRO} == arch && -d ${ARCH_HOME_OVERLAY_DIR} ]]; then
+    arch_source_desktop_quiet \
+      || die 'lib/arch-desktop.sh is missing but home-arch/ is present; cannot verify the overlay.'
+    declare -F arch_desktop_is_deployed_file >/dev/null 2>&1 \
+      || die 'lib/arch-desktop.sh does not provide arch_desktop_is_deployed_file; coordinate the API before proceeding.'
     while IFS= read -r -d '' src; do
       rel=${src#"${ARCH_HOME_OVERLAY_DIR}/"}
+      # Deployed user files are real files by design (see stow_arch_overlay);
+      # the symlink assertion below never applies to them.
+      arch_desktop_is_deployed_file "${rel}" && continue
       target="${HOME}/${rel}"
       if [[ ! -L ${target} ]]; then
         log_error "${target} is not a symlink into home-arch/. Run ./dot stow."
@@ -932,6 +957,23 @@ cmd_doctor() {
         link_failed=1
       fi
     done < <(arch_overlay_files)
+    while IFS= read -r rel; do
+      [[ -n ${rel} ]] || continue
+      target="${HOME}/${rel}"
+      if [[ -L ${target} ]]; then
+        log_error "${target} is a legacy symlink, not a deployed user file. Run ./dot stow."
+        link_failed=1
+      elif [[ ! -f ${target} ]]; then
+        log_error "${target} is not deployed. Run ./dot stow."
+        link_failed=1
+      else
+        content="$(cat -- "${target}")"
+        if [[ -z ${content} || ${content} == 'return {}' ]]; then
+          log_error "${target} is an unconfigured compositor placeholder. Run ./dot stow."
+          link_failed=1
+        fi
+      fi
+    done < <(arch_desktop_deployed_relpaths)
   fi
   if [[ ${DISTRO} == fedora && -d ${FEDORA_HOME_OVERLAY_DIR} ]]; then
     while IFS= read -r -d '' src; do

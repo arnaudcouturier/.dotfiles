@@ -10,11 +10,16 @@ covers usage; these are the rules that are easy to break.
 - **Never edit `~` directly.** Edit `home/`, then `./dot stow`. Conflicts are
   overwritten without backup, deliberately — don't add backup logic (home files never do). The `/etc` and bootloader backups inside
   `lib/arch-*.sh` are the narrow exception: boot and login configs get one
-  restorable backup.
+  restorable backup. Second narrow exception: the two compositor-owned user
+  files (`~/.config/caelestia/hypr-user.lua`, `hypr-vars.lua`) deploy once as
+  real files and are edited in place — stow can never own paths the running
+  compositor recreates, and upstream defines both as user-edited.
 - **Stow is per-distro selection.** Shared `home/` holds common files plus
   two forwarding aliases (Ghostty, hypr input) that shared stow skips on
 every distro; `home-fedora/` stows the Fedora sources and `home-arch/`
-the Arch ones, each with the same overwrite/no-backup rules. `doctor`
+the Arch ones, each with the same overwrite/no-backup rules. `home-arch/`
+additionally excludes the two compositor-owned user files from stow (the
+desktop module copy-deploys them as real files instead). `doctor`
 checks each tree against its selected source; Fedora is otherwise unchanged.
 - **Never translate package names between distros.** Each bundle is a recipe
   for one distro. `dot` refuses a verb the current distro cannot use and dies

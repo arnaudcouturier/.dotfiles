@@ -1,7 +1,10 @@
--- Overrides for the Caelestia Hyprland defaults.
--- Managed by the arch-desktop overlay (home-arch/); reapplied by
--- arch_desktop_deploy_overlay, never by hand. Upstream Caelestia owns every
--- other key.
+-- User-owned Caelestia overrides for the Hyprland defaults. Deployed ONCE
+-- as a real file by ./dot stow and ./dot arch-setup (copy-if-missing onto
+-- the compositor's placeholder; never stowed, never overwritten afterwards
+-- — the compositor recreates a missing file here within milliseconds, so
+-- stow can never own this path). Edit FREELY in $HOME. Repo template:
+-- home-arch/.config/caelestia/hypr-vars.lua in the dotfiles checkout;
+-- template updates need a manual merge.
 --
 -- editor opens the existing shared Neovim config inside ghostty: this system
 -- ships no VSCode/Code-OSS package, so there is no `code` binary for

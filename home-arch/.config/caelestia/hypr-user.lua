@@ -1,6 +1,11 @@
--- User-level additions to Caelestia's Hyprland configuration.
--- Managed by the arch-desktop overlay (home-arch/); reapplied by
--- arch_desktop_install_overlay, never by hand. This file loads after
+-- User-owned Caelestia file. Deployed ONCE as a real file by ./dot stow and
+-- ./dot arch-setup (copy-if-missing onto the compositor's placeholders;
+-- never stowed, never overwritten afterwards — the compositor recreates a
+-- missing file here within milliseconds, so stow can never own this path).
+-- Edit FREELY in $HOME: an active hl.monitor block lives HERE, never in
+-- the repo template. Repo template: home-arch/.config/caelestia/hypr-user.lua
+-- in the dotfiles checkout; template updates need a manual merge.
+-- This file loads after
 -- Caelestia's hyprland.keybinds, so the binds below are added on top of
 -- Caelestia's set. One hl.config call on purpose: a single table means no
 -- merge semantics to guess about.
@@ -10,7 +15,7 @@
 -- `hl.monitor({ output = "", mode = "preferred", position = "auto",
 -- scale = 1 })` at caelestia-dots @ 1ee7a98 hypr/hyprland.lua:53-59) and
 -- must never be edited (upstream README CAUTION). This file is the
--- supported override: stowed to ~/.config/caelestia/hypr-user.lua on Arch
+-- supported override: deployed to ~/.config/caelestia/hypr-user.lua on Arch
 -- and loaded last via `require("hypr-user")`. No active monitor block is
 -- committed below — find your outputs with `hyprctl monitors`, then add
 -- your own `hl.monitor` call. Minimal shape (commented example only):
@@ -76,9 +81,8 @@ hl.bind(
 -- driver owns the display, which is exactly when the direct backend works;
 -- on nouveau the block stays off and Mesa VA-API applies. Guarded so a
 -- sandboxed Lua without `io` simply skips it instead of breaking the whole
--- config. Static file on purpose: the overlay is stowed, and writing through
--- its symlink would mutate the repo, so there is deliberately no generated
--- variant of this block.
+-- config. Static file on purpose: this deploys as a real user-owned file (never
+-- a symlink), so there is deliberately no generated variant of this block.
 local have_nvidia_gpu = false
 if io and io.open then
     local nvidia_version = io.open("/sys/module/nvidia/version", "r")

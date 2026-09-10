@@ -50,6 +50,33 @@ cmp -s -- "${TEST_ARCH_SANDBOX}/deployed-first.txt" "${TEST_ARCH_SANDBOX}/deploy
   || test_arch_die 'overlay re-install was not idempotent'
 arch_desktop_verify_overlay >/dev/null
 
+# --- Compositor-owned user files deploy as real files, never symlinks. ---
+for user_rel in .config/caelestia/hypr-user.lua .config/caelestia/hypr-vars.lua; do
+  [[ -f ${TEST_ARCH_HOME}/${user_rel} && ! -L ${TEST_ARCH_HOME}/${user_rel} ]] \
+    || test_arch_die "overlay install did not deploy real file ${user_rel}"
+  cmp -s -- "${TEST_ARCH_REPO_ROOT}/home-arch/${user_rel}" "${TEST_ARCH_HOME}/${user_rel}" \
+    || test_arch_die "fresh-deployed ${user_rel} differs from the template"
+done
+
+# --- User content survives re-install; placeholders convert to templates. ---
+printf -- '-- active monitor block\n' >>"${TEST_ARCH_HOME}/.config/caelestia/hypr-user.lua"
+: >"${TEST_ARCH_HOME}/.config/caelestia/hypr-vars.lua"
+arch_desktop_install_overlay >/dev/null
+test_arch_assert_contains "${TEST_ARCH_HOME}/.config/caelestia/hypr-user.lua" \
+  'active monitor block' 're-install wiped user content from hypr-user.lua'
+cmp -s -- "${TEST_ARCH_REPO_ROOT}/home-arch/.config/caelestia/hypr-vars.lua" \
+  "${TEST_ARCH_HOME}/.config/caelestia/hypr-vars.lua" \
+  || test_arch_die 're-install did not replace the placeholder hypr-vars.lua'
+arch_desktop_verify_overlay >/dev/null
+
+# --- Legacy symlinks to the templates convert to real files. ---
+ln -sfn -- "${TEST_ARCH_REPO_ROOT}/home-arch/.config/caelestia/hypr-user.lua" \
+  "${TEST_ARCH_HOME}/.config/caelestia/hypr-user.lua"
+arch_desktop_install_overlay >/dev/null
+[[ -f ${TEST_ARCH_HOME}/.config/caelestia/hypr-user.lua && ! -L ${TEST_ARCH_HOME}/.config/caelestia/hypr-user.lua ]] \
+  || test_arch_die 'legacy symlink hypr-user.lua was not converted to a real file'
+arch_desktop_verify_overlay >/dev/null
+
 # --- No source write-through from any install path. ---
 find "${TEST_ARCH_REPO_ROOT}/home-arch" -type f -exec sha256sum -- {} + | sort -k2 \
   >"${TEST_ARCH_SANDBOX}/overlay-source-after.txt"
