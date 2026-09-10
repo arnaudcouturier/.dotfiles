@@ -34,7 +34,7 @@
 	fsmonitor = true         # Faster status in large repos (built-in watcher)
 [user]
 	name = Arnaud Couturier
-	email = arnaud@arenwald.com
+	email = arnaud@arnaudcouturier.dev
 [credential "https://github.com"]
 	helper =
 	helper = !gh auth git-credential
