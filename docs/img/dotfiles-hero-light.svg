@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="220" viewBox="0 0 1200 220" role="img" aria-labelledby="bhero-t bhero-d">
+<title id="bhero-t">.dotfiles hero</title>
+<desc id="bhero-d">Wordmark .dotfiles for Arch and Fedora: shared tools, separate desktops</desc>
+<!-- Concept B "masthead" FINAL, light variant: centered editorial, transparent bg -->
+<!-- eyebrow with two-distro motif: one bar per distro -->
+<rect x="238" y="38" width="96" height="8" rx="4" fill="#C2410C"/>
+<text x="600" y="58" text-anchor="middle" font-family="Liberation Mono, Noto Sans Mono, DejaVu Sans Mono, monospace" font-size="27" letter-spacing="8" fill="#C2410C">ARCH &#183; FEDORA</text>
+<rect x="866" y="38" width="96" height="8" rx="4" fill="#0F766E"/>
+<!-- wordmark (dominant) -->
+<text x="600" y="149" text-anchor="middle" font-family="Liberation Sans, Noto Sans, DejaVu Sans, sans-serif" font-size="90" font-weight="bold" fill="#1C1917"><tspan fill="#C2410C">.</tspan>dotfiles</text>
+<!-- tagline, enlarged for small-scale legibility; lede in text carries the same meaning -->
+<text x="600" y="190" text-anchor="middle" font-family="Liberation Mono, Noto Sans Mono, DejaVu Sans Mono, monospace" font-size="30" fill="#57534E">Shared tools. Separate desktops.</text>
+</svg>
