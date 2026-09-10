@@ -31,6 +31,10 @@ require("lazy").setup({
     -- version = "*", -- try installing the latest stable version for plugins that support semver
   },
   install = { colorscheme = { "tokyonight", "habamax" } },
+  -- Limit concurrent git ops: the LAN DNS (192.168.1.2) drops queries under
+  -- burst load, so unlimited clones fail with "Could not resolve host".
+  -- Sequential DNS always succeeds; 4-way parallelism stays well under it.
+  concurrency = 4,
   checker = {
     enabled = true, -- check for plugin updates periodically
     notify = false, -- notify on update
