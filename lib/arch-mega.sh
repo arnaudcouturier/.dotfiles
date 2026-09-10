@@ -82,7 +82,12 @@ arch_mega_config_section_count() {
 # one-liner instead of a hunt.
 arch_mega_config_section_lines() {
   local config=${1:-/etc/pacman.conf}
-  grep -nE '^\[DEB_Arch_Extra\][[:space:]]*$' -- "${config}" 2>/dev/null | cut -d: -f1 | tr '\n' ' ' | sed 's/ $//'
+  # No section is normal on first install: return success with empty output,
+  # while still propagating read errors. grep's no-match status aborts init
+  # under errexit before the missing section can be written.
+  awk '/^\[DEB_Arch_Extra\][[:space:]]*$/ {
+    printf "%s%d", separator, NR; separator = " "
+  } END { if (separator != "") printf "\n" }' "${config}"
 }
 
 # Print the body lines of the [DEB_Arch_Extra] section (header and the next
