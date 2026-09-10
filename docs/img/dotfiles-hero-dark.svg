@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1320" height="400" viewBox="0 0 1320 400" role="img" aria-labelledby="bht-a bht-d">
-<title id="bht-a">.dotfiles — shared tools, separate desktops</title>
-<desc id="bht-d">Workbench illustration at night: the wordmark beside fanned config cards for home, home-arch and home-fedora, tied by a stow string.</desc>
+<title id="bht-a">.dotfiles — Arch Linux and Fedora configuration</title>
+<desc id="bht-d">Illustration at night: the wordmark beside fanned config cards for home, home-arch and home-fedora, tied by a stow string.</desc>
 <defs>
 <linearGradient id="bDeskD" x1="0" y1="0" x2="0" y2="1">
 <stop offset="0" stop-color="#241C14"/><stop offset="1" stop-color="#14100C"/>
@@ -13,9 +13,9 @@
 <rect x="0" y="0" width="1320" height="400" fill="url(#bDotsD)"/>
 <!-- left editorial column -->
 <rect x="90" y="78" width="54" height="6" fill="#FB923C"/>
-<text x="156" y="90" font-family="Liberation Mono, Noto Sans Mono, DejaVu Sans Mono, monospace" font-size="20" letter-spacing="3" fill="#C9B69E">PERSONAL SETUP &#183; ARCH + FEDORA</text>
+<text x="156" y="90" font-family="Liberation Mono, Noto Sans Mono, DejaVu Sans Mono, monospace" font-size="20" letter-spacing="3" fill="#C9B69E">ARCH LINUX &#183; FEDORA</text>
 <text x="88" y="206" font-family="Liberation Sans, Noto Sans, DejaVu Sans, sans-serif" font-size="112" font-weight="bold" fill="#FAF6EF"><tspan fill="#FB923C">.</tspan>dotfiles</text>
-<text x="90" y="258" font-family="Liberation Mono, Noto Sans Mono, DejaVu Sans Mono, monospace" font-size="29" fill="#D6CDBD">Shared tools. Separate desktops.</text>
+<text x="90" y="258" font-family="Liberation Mono, Noto Sans Mono, DejaVu Sans Mono, monospace" font-size="29" fill="#D6CDBD">Arch Linux and Fedora configuration.</text>
 <rect x="90" y="274" width="209" height="5" fill="#FB923C" opacity="0.85"/>
 <!-- stow ticket -->
 <rect x="94" y="304" width="336" height="62" rx="10" fill="#000000" opacity="0.45"/>

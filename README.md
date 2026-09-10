@@ -1,15 +1,15 @@
 <h1 align="center">
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/img/dotfiles-hero-dark.svg">
-  <img alt=".dotfiles — shared tools, separate desktops: workbench with fanned home, home-arch, and home-fedora cards tied by a stow string" src="docs/img/dotfiles-hero-light.svg" width="760">
+  <img alt=".dotfiles — Arch Linux and Fedora configuration: fanned home, home-arch, and home-fedora cards tied by a stow string" src="docs/img/dotfiles-hero-light.svg" width="760">
 </picture>
 </h1>
 
-**Dotfiles** — one script installs this machine's packages and links every config with GNU Stow.
-Arch gets the full Caelestia workstation; Fedora gets apps and config on the desktop it already has.
+Dotfiles for Arch Linux and Fedora, linked with GNU Stow.
+Arch installs the full workstation; Fedora uses the existing desktop.
 
 <p align="center">
-<a href="#setup">Setup</a> · <a href="#everyday">Everyday</a> · <a href="#arch-system">Arch system</a> · <a href="#packages">Packages</a> · <a href="#customize">Customize</a>
+<a href="#setup">Setup</a> · <a href="#commands">Commands</a> · <a href="#arch-system">Arch system</a> · <a href="#configuration">Configuration</a>
 </p>
 
 > [!CAUTION]
@@ -19,94 +19,83 @@ Arch gets the full Caelestia workstation; Fedora gets apps and config on the des
 > notably the Git identity in
 > [`home/.config/git/config`](home/.config/git/config).
 
-|  | Arch | Fedora |
-|---|---|---|
-| Scope | full workstation: system plus Caelestia desktop | apps and config on your current desktop (NVIDIA drivers excepted) |
-| Starts from | minimal archinstall (Limine, no DE; btrfs for snapshots) | Workstation (not atomic) |
-| Configs linked | `home/` + `home-arch/` | `home/` + `home-fedora/` |
-
 ## Setup
 
-Run everything in a terminal as your regular user, never root: sudo asks once,
-and `yay` shows each AUR build for review.
+Run as the regular user, never root:
 
 ```bash
 git clone https://github.com/arnaudcouturier/.dotfiles.git ~/.dotfiles
 cd ~/.dotfiles
 ```
 
-`init` installs helpers, this distro's bundle, links configs, syncs herdr
-plugins, and sets the fish login shell.
+`init` installs helpers and this distro's bundle, links configs, syncs herdr
+plugins, and sets fish as the login shell.
 
-**Arch** — init, then provision the system:
-
-```bash
-./dot init
-./dot arch-setup    # idempotent; re-running repairs drift
-./dot arch-check    # verify afterwards; changes nothing
-```
-
-**Fedora** — init is the whole install:
+**Arch** — from minimal archinstall (Limine, no desktop; btrfs for snapshots).
+Links `home/` + `home-arch/`:
 
 ```bash
 ./dot init
-./dot doctor        # read-only check that everything landed
+./dot arch-setup
+./dot arch-check
 ```
 
-Re-running setup is the repair path.
+**Fedora** — Workstation, non-atomic only. Links `home/` + `home-fedora/`;
+system provisioning is out of scope except NVIDIA:
 
-## Everyday
+```bash
+./dot init
+./dot doctor
+```
 
-| Command | Run it when… |
+Rerun `init` to reapply the setup.
+
+## Commands
+
+| Command | Purpose |
 |---|---|
-| `./dot update` | you want the latest: pull, reinstall, relink, resync plugins |
-| `./dot stow` | after editing the repo; never edit `~` directly |
-| `./dot doctor` | something feels off; checks helpers, packages, links, shell |
-| `./dot check-packages` | you want the bundle entries missing here |
-| `./dot package add NAME` | adding one thing (recorded in the bundle; `--aur`/`--rpm`/… for non-repo) |
-| `./dot package remove NAME` | removing one thing |
-| `./dot benchmark-shell` | fish feels slow; warns past 100 ms |
-| `./dot nvidia` | Fedora-only NVIDIA drivers; refuses on Arch, no-op without the hardware |
+| `./dot update` | Pull, reinstall, relink, resync plugins |
+| `./dot stow` | Relink configs after editing the repo; never edit `~` directly |
+| `./dot doctor` | Check helpers, packages, links, shell |
+| `./dot check-packages` | List bundle entries not installed |
+| `./dot package add NAME` | Install and record one entry (`--aur`/`--rpm`/… for non-repo) |
+| `./dot package remove NAME` | Drop the bundle line, then uninstall |
+| `./dot benchmark-shell` | Time fish startup; warns past 100 ms |
+| `./dot nvidia` | Fedora NVIDIA drivers; no-op without the hardware |
 
 ## Arch system
 
 `arch-setup` runs `system → gpu → snapshots → desktop → greeter → video → limine`
-in canonical order. `--only` filters steps — never the bundle install or stow —
-so any subset stays repairable.
+in order. `--only` filters steps, never the bundle install or stow.
 
 > [!NOTE]
-> Two contracts: without `--replace-display-manager`, setup refuses beside an
-> incumbent display manager instead of displacing it; Limine entries are only
-> added, never removed. Step-by-step reference: [`docs/usage.md`](docs/usage.md).
+> `arch-setup` refuses to replace an existing display manager unless
+> `--replace-display-manager` is provided. Existing Limine entries are
+> preserved. Reference:
+> [`docs/usage.md`](docs/usage.md).
 
-## Packages
+## Configuration
 
-One bundle per distro — [`arch`](packages/arch.bundle), [`fedora`](packages/fedora.bundle).
-Every line is a verb, a name, and a `# comment` saying why it's there. Names are never
-translated between distros (`fd` vs `fd-find`, `gh` vs `github-cli`); Fedora sources are
-verified against their vendors; global npm entries install with `--ignore-scripts` unless
-the postinstall *is* the install. Verb and policy reference: [`docs/usage.md`](docs/usage.md).
-
-## Customize
-
-Edit the repo, then run `./dot stow` to link your configs into `~`:
+Edit the repo, then run `./dot stow`:
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/img/dotfiles-flow-dark.svg">
-  <img alt="Make yourself at home: edit the repo, then run ./dot stow to link your configs into your home directory" src="docs/img/dotfiles-flow-light.svg" width="760">
+  <img alt="Configuration workflow: edit the repo, then run ./dot stow to link configs into the home directory" src="docs/img/dotfiles-flow-light.svg" width="760">
 </picture>
 
-- Shared: [`home/`](home/) — including Fish ([`config.fish`](home/.config/fish/config.fish)), Git, nvim, agent skills
-- Arch desktop: [`home-arch/`](home-arch/) — monitors in [`hypr-user.lua`](home-arch/.config/caelestia/hypr-user.lua), night light in [`hypr-vars.lua`](home-arch/.config/caelestia/hypr-vars.lua) (`automaticNightLight`; <kbd>Super</kbd>+<kbd>Shift</kbd>+<kbd>N</kbd> toggles anytime)
-- Fedora desktop: [`home-fedora/`](home-fedora/) — Ghostty theme, hypr input
+- Shared: [`home/`](home/) — Fish ([`config.fish`](home/.config/fish/config.fish)), Git, nvim, agent skills
+- Arch: [`home-arch/`](home-arch/) — monitors in [`hypr-user.lua`](home-arch/.config/caelestia/hypr-user.lua), night light in [`hypr-vars.lua`](home-arch/.config/caelestia/hypr-vars.lua) (`automaticNightLight`; <kbd>Super</kbd>+<kbd>Shift</kbd>+<kbd>N</kbd> toggles)
+- Fedora: [`home-fedora/`](home-fedora/) — Ghostty theme, hypr input
 
-On Arch, the generated `~/.config/hypr/` tree is upstream output — customize the sources above, not it.
+On Arch, `~/.config/hypr/` is generated output; edit the sources above.
+
+Packages: [`arch`](packages/arch.bundle) · [`fedora`](packages/fedora.bundle) —
+one commented line per entry. Verbs and policy: [`docs/usage.md`](docs/usage.md).
 
 ## Read more
 
-- [`docs/usage.md`](docs/usage.md) — command, package-policy, and Arch safety reference
-- [`docs/arch-coverage.md`](docs/arch-coverage.md) — where every provisioned subsystem came from
-- [`packages/arch.bundle`](packages/arch.bundle) · [`packages/fedora.bundle`](packages/fedora.bundle) — the actual recipes
+- [`docs/usage.md`](docs/usage.md) — commands, package policy, and Arch reference
+- [`docs/arch-coverage.md`](docs/arch-coverage.md) — provisioned subsystems and sources
 
 ---
 *Inspired by [Dillon Mulroy's dotfiles](https://github.com/dmmulroy/.dotfiles), linked with [GNU Stow](https://www.gnu.org/software/stow/).*

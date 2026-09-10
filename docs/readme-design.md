@@ -84,31 +84,33 @@ as user restrictions.
 
 ## Design decisions
 
-1. **Compact visual field-guide with two distro doors** — scope plus
+1. **Compact setup with two distro paths** — scope plus
    per-distro setup fences up front (slate/sniffnet/dbt/doom), not a
-   showcase. The hero alone earns the top spot; the supporting figure
-   lives after quickstart so setup stays above the fold. The only choice
-   a reader makes is which distro door they are.
-2. **Rich original dual-mode hero, imported (Workbench)** — tactile fanned
-   config cards plus command ticket plus symlink twine, warm ink on paper
+   showcase. The hero is the only top visual; the supporting figure
+   is after setup. The reader selects the Arch or Fedora path.
+2. **Original dual-mode hero** — fanned
+   config cards plus command ticket plus link twine, warm ink on paper
    (light) / warm paper on ink (dark), as
    `docs/img/dotfiles-hero-{light,dark}.svg`, swapped via the
    GitHub-supported `prefers-color-scheme` `picture` pattern inside a
-   centered `h1` with sentence `alt` plus SVG `title`/`desc`. Flat fills
-   re-tinted light/dark (mafl), outlined display type or system fonts only
+   centered `h1` with sentence `alt` plus SVG `title`/`desc`. Copy is
+   factual: eyebrow `ARCH LINUX · FEDORA`, tagline
+   `Arch Linux and Fedora configuration.` Flat fills
+   re-tinted light/dark (mafl), system fonts only
    (nerd-fonts/gowebly), capped width readable at 390 px (thelounge/hmpl).
    Zero badges, zero screenshots, zero fake terminal.
-3. **One supporting figure after quickstart, never stacked with the hero** —
-   `docs/img/dotfiles-flow-{light,dark}.svg` at Customize: three stations
+3. **One supporting figure after setup, never stacked with the hero** —
+   `docs/img/dotfiles-flow-{light,dark}.svg` at Configuration: three stations
    only, edit repo → `./dot stow` → linked `~/` (bundle is not a station).
-   Text and `alt` state the same three stations with no fake statuses; the
-   figure replaces the redundant source-table and running prose, while the
-   three source-path bullets plus monitor/night-light links stay in text.
-   Sentence `alt`, light fallback `img`, compositionally identical variants
-   differing only in fills (Redocly/lobe/hmpl); staged captures only from
-   real installs (lobehub/mafl).
+   Headline `Configuration workflow`. Text and `alt` state the same three
+   stations with no fake statuses; the figure replaces the redundant
+   source-table and running prose, while the three source-path bullets plus
+   monitor/night-light links stay in text. Sentence `alt`, light fallback
+   `img`, compositionally identical variants differing only in fills
+   (Redocly/lobe/hmpl); staged captures only from real installs
+   (lobehub/mafl).
 4. **Progressive disclosure** — homepage (scope, safety, quickstart, commands,
-   customize) → `docs/usage.md` (operator reference) → `docs/arch-coverage.md`
+   configuration) → `docs/usage.md` (operator reference) → `docs/arch-coverage.md`
    and bundle comments (history/rationale). Verb matrix, fingerprint, step
    internals, and alias mechanics live one click down, never inline.
 5. **Safety rides with the command** — CAUTION (no-backup + Git identity) before
@@ -116,6 +118,6 @@ as user restrictions.
    (shallow-backup/changelog-generator honesty); `--only`, NVIDIA scoping, and
    the fresh-host `arch-check` preview (which lives in the guide, not the
    paste block) stated where used.
-6. **Dry-operator voice, one quiet line** — 2-line pitch naming the repo,
-   5-anchor nav, tables with "run it when" clauses; the single aside is
-   "Re-running it is the repair path." No brochure energy.
+6. **Factual voice** — short pitch naming the repo,
+   4-anchor nav, tables with a Purpose column; idempotent repair stated once.
+   No marketing language.

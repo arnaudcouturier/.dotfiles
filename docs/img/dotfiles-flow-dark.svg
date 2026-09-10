@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="360" viewBox="0 0 1200 360" role="img" aria-labelledby="dft-a dft-d">
-<title id="dft-a">Make yourself at home</title>
-<desc id="dft-d">Three-step illustration: edit the repo, link it with dot stow, live in your home directory.</desc>
+<title id="dft-a">Configuration workflow</title>
+<desc id="dft-d">Three-step illustration: edit configuration sources, run dot stow, and link files into the home directory.</desc>
 <defs>
 <linearGradient id="dfDeskD" x1="0" y1="0" x2="0" y2="1">
 <stop offset="0" stop-color="#241C14"/><stop offset="1" stop-color="#14100C"/>
@@ -12,7 +12,7 @@
 <rect x="0" y="0" width="1200" height="360" fill="url(#dfDeskD)"/>
 <rect x="0" y="0" width="1200" height="360" fill="url(#dfDotsD)"/>
 <rect x="300" y="50" width="60" height="5" fill="#FB923C"/>
-<text x="600" y="62" text-anchor="middle" font-family="Liberation Serif, Noto Serif, DejaVu Serif, serif" font-style="italic" font-size="32" fill="#E9DFCE">Make yourself at home</text>
+<text x="600" y="62" text-anchor="middle" font-family="Liberation Serif, Noto Serif, DejaVu Serif, serif" font-style="italic" font-size="32" fill="#E9DFCE">Configuration workflow</text>
 <rect x="840" y="50" width="60" height="5" fill="#2DD4BF"/>
 <!-- station 1: edit the repo -->
 <g>
@@ -51,7 +51,7 @@
 <path d="M-30,4 L0,-18 L30,4 V26 h-60 Z"/><path d="M-6,26 V12 H6 V26"/>
 </g>
 <text x="920" y="234" text-anchor="middle" font-family="Liberation Mono, Noto Sans Mono, DejaVu Sans Mono, monospace" font-size="40" font-weight="bold" fill="#FAF6EF">~ linked</text>
-<text x="920" y="256" text-anchor="middle" font-family="Liberation Mono, Noto Sans Mono, DejaVu Sans Mono, monospace" font-size="14" letter-spacing="2" fill="#A8A29E">YOUR HOME</text>
+<text x="920" y="256" text-anchor="middle" font-family="Liberation Mono, Noto Sans Mono, DejaVu Sans Mono, monospace" font-size="14" letter-spacing="2" fill="#A8A29E">CONFIG FILES</text>
 </g>
 <!-- chevrons -->
 <g stroke="#8A8171" stroke-width="2.4" fill="none" stroke-linecap="round">
