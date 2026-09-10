@@ -47,3 +47,6 @@ if status is-interactive
         echo -en '\e]133;A\e\\'
     end
 end
+mise activate fish | source
+mise activate fish | source
+/home/arnaudc/.local/bin/mise activate fish | source
