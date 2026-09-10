@@ -117,13 +117,30 @@ end_elevation
 printf '%s\n' "${setup_bogus_out}" >"${TEST_ARCH_SANDBOX}/setup-bogus.txt"
 test_arch_assert_contains "${TEST_ARCH_SANDBOX}/setup-bogus.txt" 'Unknown arch step' 'H2: setup bogus step named'
 export HOME="${TEST_ARCH_HOME}"
+# Forwarding aliases are distro-independent: shared stow and doctor skip
+# them everywhere, and each distro stows its own real copy from its own
+# tree.
 DISTRO=fedora
-arch_path_is_superseded '.config/ghostty/config' && test_arch_die 'Fedora supersedes shared ghostty'
-arch_path_is_superseded '.config/hypr/input.lua' && test_arch_die 'Fedora supersedes shared input.lua'
-DISTRO=arch
-arch_path_is_superseded '.config/ghostty/config' || test_arch_die 'Arch does not supersede shared ghostty'
-arch_path_is_superseded '.config/hypr/input.lua' || test_arch_die 'Arch does not supersede shared input.lua'
-arch_path_is_superseded '.config/fish/config.fish' && test_arch_die 'Arch supersedes shared fish config'
+for compat_path in .config/ghostty/config .config/hypr/input.lua; do
+  home_path_is_compat_forward "${compat_path}" \
+    || test_arch_die "compat forward missed ${compat_path}"
+done
+home_path_is_compat_forward '.config/fish/config.fish' \
+  && test_arch_die 'compat forward claims fish config'
+# Unset DISTRO must not leak either overlay selection: fail-closed stow
+# turns any leak into a loud failure (subshell keeps parent DISTRO intact).
+test_arch_stub_command stow
+set +e
+(
+  unset DISTRO
+  stow_fedora_overlay >/dev/null 2>&1 || exit 11
+  stow_arch_overlay >/dev/null 2>&1 || exit 12
+)
+unset_status=$?
+set -e
+rm -f -- "${TEST_ARCH_BIN}/stow"
+((unset_status == 0)) || test_arch_die "unset DISTRO leaked overlay selection (exit ${unset_status})"
+DISTRO=fedora
 
 # --- Greeter gate holds shut by default: fresh shell, empty tree, no pass. ---
 # shellcheck source=/dev/null

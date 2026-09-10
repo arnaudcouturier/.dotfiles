@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC1091 # sandbox harness computes source paths at runtime; static following is impossible by design
 # Decided overlay scope (static, no execution): the home/ ∩ home-arch/
-# collision set is exactly the Ghostty config (handled by dot's Arch-only
-# shared exclusion, Fedora unchanged); the shared hypr/input.lua has an
+# collision set is exactly the Ghostty forwarding alias (shared stow skips
+# aliases on every distro; each distro stows its own real copy); the Fedora
+# tree ships both aliases as real files; the shared hypr/input.lua alias has
 # overlay user override carrying equivalent kb_options; the overlay sets no
 # unconditional NVIDIA environment and hardcodes no PCI IDs or identities.
 set -euo pipefail
@@ -15,7 +16,9 @@ test_arch_make_sandbox
 
 SHARED="${TEST_ARCH_REPO_ROOT}/home"
 OVERLAY="${TEST_ARCH_REPO_ROOT}/home-arch"
+FEDORA_TREE="${TEST_ARCH_REPO_ROOT}/home-fedora"
 [[ -d ${OVERLAY} ]] || { printf 'SEAM PENDING: home-arch/ overlay missing\n'; exit 3; }
+[[ -d ${FEDORA_TREE} ]] || { printf 'SEAM PENDING: home-fedora/ overlay missing\n'; exit 3; }
 
 failures=0
 scope_fail() {
@@ -36,6 +39,12 @@ actual="$(cat -- "${TEST_ARCH_SANDBOX}/collisions.txt")"
 if cmp -s -- "${SHARED}/.config/ghostty/config" "${OVERLAY}/.config/ghostty/config"; then
   scope_fail 'overlay Ghostty config is identical to shared; exclusion would be pointless'
 fi
+
+# --- home-fedora/ ships both aliases as real files, never aliases. ---
+for fedora_rel in .config/ghostty/config .config/hypr/input.lua; do
+  [[ -f ${FEDORA_TREE}/${fedora_rel} && ! -L ${FEDORA_TREE}/${fedora_rel} ]] \
+    || scope_fail "home-fedora/${fedora_rel} is not a real file"
+done
 
 # --- kb_options lives in the overlay user override: Caelestia owns the ---
 # --- generated tree, so the overlay must not ship a conflicting file. ---

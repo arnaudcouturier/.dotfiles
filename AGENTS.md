@@ -11,12 +11,11 @@ covers usage; these are the rules that are easy to break.
   overwritten without backup, deliberately — don't add backup logic (home files never do). The `/etc` and bootloader backups inside
   `lib/arch-*.sh` are the narrow exception: boot and login configs get one
   restorable backup.
-- **Arch stow is selective, Fedora stow is unchanged.** On Arch, shared stow
-  ignores the paths `home-arch/` supersedes (Ghostty follows Caelestia there
-  while shared Ghostty follows DMS; shared `hypr/input.lua` is excluded for
-  the generated Caelestia tree, whose override carries the equivalent option).
-  The overlay stows after with the same overwrite/no-backup rules, and
-  `doctor` checks each tree against its selected source.
+- **Stow is per-distro selection.** Shared `home/` holds common files plus
+  two forwarding aliases (Ghostty, hypr input) that shared stow skips on
+every distro; `home-fedora/` stows the Fedora sources and `home-arch/`
+the Arch ones, each with the same overwrite/no-backup rules. `doctor`
+checks each tree against its selected source; Fedora is otherwise unchanged.
 - **Never translate package names between distros.** Each bundle is a recipe
   for one distro. `dot` refuses a verb the current distro cannot use and dies
   before changing anything. Verify a Fedora entry against its vendor before

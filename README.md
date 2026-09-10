@@ -106,10 +106,13 @@ Names are never translated between distros (`fd` vs `fd-find`, `github-cli` vs
   system, then installs rpmfusion and akmod-nvidia per the Fedora gaming docs,
   only when the machine has an NVIDIA GPU.
 - `packages/*.bundle` — one package list per distro.
-- `home/` — mirrors `$HOME`, linked in by Stow: fish, Starship, Git, herdr,
-  fastfetch, ripgrep, Hyprland input, Ghostty, agent skills, pi config, wallpapers.
-  Edit here, never `~` directly, then run `./dot stow`. On Arch, `home-arch/`
-  (desktop overlay) stows after; shared Ghostty and hypr input yield to it there.
+- `home/` — shared dotfiles, linked in by Stow: fish, Starship, Git,
+  herdr, fastfetch, ripgrep, agent skills, pi config, wallpapers, plus
+  two forwarding aliases (Ghostty, hypr input) that shared stow always
+  skips. Edit here, never `~` directly, then run `./dot stow`.
+- `home-fedora/` — Fedora desktop sources (Ghostty DMS config, hypr
+  input); stowed after `home/` on Fedora only, same overwrite/no-backup
+  rules.
 
 - `lib/arch-*.sh` — Arch provisioning modules behind one setup/verify seam
   each (system, GPU, snapshots, greeter, Limine, video); `lib/arch-desktop.sh`

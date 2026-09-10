@@ -12,6 +12,8 @@ readonly HOME_DIR="${DOTFILES_DIR}/home"
 # Arch-only paths. home-arch/ and lib/arch-desktop.sh belong to the
 # arch-design agent; dot references them but never creates them.
 readonly ARCH_HOME_OVERLAY_DIR="${DOTFILES_DIR}/home-arch"
+# Fedora-only desktop sources, owned by this repo like shared home/.
+readonly FEDORA_HOME_OVERLAY_DIR="${DOTFILES_DIR}/home-fedora"
 readonly ARCH_DESKTOP_MODULE="${DOTFILES_DIR}/lib/arch-desktop.sh"
 readonly ARCH_LIB_DIR="${DOTFILES_DIR}/lib"
 readonly APPIMAGE_DIR="${HOME}/Applications"
@@ -556,40 +558,42 @@ home_files() {
     -o \( -type f -o -type l \) -print0 | sort -z
 }
 
-# Shared paths the Arch overlay deliberately supersedes. On Arch only,
-# shared stow ignores these and home-arch/ provides them instead: ghostty
-# carries the Caelestia palette while shared Ghostty follows DMS, and
-# hypr/input.lua is excluded because Caelestia generates the Hyprland tree
-# (the equivalent keyboard option lives in the Arch user override).
-# Shared files on disk are never modified; Fedora stow ignores nothing extra.
-ARCH_SUPERSEDED_SHARED_PATHS=(
+# Repo forwarding aliases kept where Fedora-owned files used to live, so
+# links stowed before the move keep resolving through them. Transitional,
+# not configuration: shared stow and doctor skip them on every distro, and
+# each distro stows its own real copy from its own tree instead.
+HOME_COMPAT_FORWARD_PATHS=(
   .config/ghostty/config
   .config/hypr/input.lua
 )
 
-# True when a shared-home relpath is Arch-superseded. Fedora never
-# supersedes, so shared stow there stays exactly as before.
-arch_path_is_superseded() {
-  # Self-gated on distro (unset-safe): Fedora invariance must hold no
-  # matter which caller reaches this helper.
-  [[ ${DISTRO:-} == arch ]] || return 1
+# True when a shared-home relpath is a forwarding alias. Distro-independent
+# and unset-safe: shared stow and doctor skip these everywhere.
+home_path_is_compat_forward() {
   local path=$1 candidate
-  for candidate in ${ARCH_SUPERSEDED_SHARED_PATHS[@]+"${ARCH_SUPERSEDED_SHARED_PATHS[@]}"}; do
+  for candidate in ${HOME_COMPAT_FORWARD_PATHS[@]+"${HOME_COMPAT_FORWARD_PATHS[@]}"}; do
     [[ ${path} == "${candidate}" ]] && return 0
   done
   return 1
+}
+
+# One stow --ignore flag per forwarding alias, derived from the list above
+# so the selection lives in exactly one place (dots are the only regex
+# metacharacters these paths contain).
+home_compat_ignore_pattern() {
+  printf -- '--ignore=(^|/)%s$\n' "${1//./\\.}"
 }
 
 stow_dotfiles() {
   require_command stow
   [[ -d ${HOME_DIR} ]] || die "Missing home directory: ${HOME_DIR}"
   log_step "Linking home/ into ${HOME} (conflicts are overwritten, no backup)"
-  local src rel target
+  local src rel target compat
   while IFS= read -r -d '' src; do
     rel=${src#"${HOME_DIR}/"}
-    # Arch-superseded paths belong to the overlay: leave any deployed overlay
-    # symlink alone instead of reclaiming it for the shared source.
-    arch_path_is_superseded "${rel}" && continue
+    # Forwarding aliases are never stowed from shared home/; each distro
+    # stows its own real copy from its own tree instead.
+    home_path_is_compat_forward "${rel}" && continue
     target="${HOME}/${rel}"
     [[ -e ${target} || -L ${target} ]] || continue
     # find yields files and symlinks only, so a real directory here is a
@@ -599,14 +603,11 @@ stow_dotfiles() {
     log_info "Overwriting ${target}"
     rm -f -- "${target}"
   done < <(home_files)
-  if [[ ${DISTRO} == arch ]]; then
-    stow -R --no-folding --ignore='(^|/)node_modules(/|$)' \
-      --ignore='(^|/)\.config/ghostty/config$' \
-      --ignore='(^|/)\.config/hypr/input\.lua$' \
-      -d "${DOTFILES_DIR}" -t "${HOME}" home
-  else
-    stow -R --no-folding --ignore='(^|/)node_modules(/|$)' -d "${DOTFILES_DIR}" -t "${HOME}" home
-  fi
+  local -a stow_ignores=(--ignore='(^|/)node_modules(/|$)')
+  for compat in ${HOME_COMPAT_FORWARD_PATHS[@]+"${HOME_COMPAT_FORWARD_PATHS[@]}"}; do
+    stow_ignores+=("$(home_compat_ignore_pattern "${compat}")")
+  done
+  stow -R --no-folding "${stow_ignores[@]}" -d "${DOTFILES_DIR}" -t "${HOME}" home
   log_ok 'Dotfiles stowed.'
 }
 
@@ -616,13 +617,58 @@ arch_overlay_files() {
     -o \( -type f -o -type l \) -print0 | sort -z
 }
 
+# Every file and symlink under home-fedora/, NUL-separated, in stable order.
+# The optional dir is a test seam for the real-files refusal; production
+# always passes the default.
+fedora_overlay_files() {
+  local overlay_dir=${1:-$FEDORA_HOME_OVERLAY_DIR}
+  find "${overlay_dir}" -mindepth 1 \( -name node_modules -o -name .gitignore \) -prune \
+    -o \( -type f -o -type l \) -print0 | sort -z
+}
+
+# Link the Fedora overlay after shared stow. Self-gated (unset returns
+# silently) and caller-gated: single-valued DISTRO runs exactly one overlay.
+# Warns (not dies) without the tree so plain stow stays usable;
+# provisioning fails loudly through arch-check instead.
+# No backup logic: same overwrite/no-backup contract as shared stow.
+stow_fedora_overlay() {
+  [[ ${DISTRO:-} == fedora ]] || return 0
+  local overlay_dir=${1:-$FEDORA_HOME_OVERLAY_DIR}
+  [[ -d ${overlay_dir} ]] || { log_warn 'home-fedora/ is missing; skipping the Fedora overlay.'; return 0; }
+  require_command stow
+  # The Fedora source tree must hold real files only: a symlink or special
+  # entry would hide indirection in a deployed link, so refuse naming it.
+  local stray
+  stray="$(find "${overlay_dir}" -mindepth 1 ! -type d ! -type f -print -quit 2>/dev/null || true)"
+  [[ -z ${stray} ]] || die "home-fedora/ must hold real files only; refusing: ${stray}"
+  log_step "Linking home-fedora/ into ${HOME} (conflicts are overwritten, no backup)"
+  local src rel target
+  while IFS= read -r -d '' src; do
+    rel=${src#"${overlay_dir}/"}
+    target="${HOME}/${rel}"
+    [[ -e ${target} || -L ${target} ]] || continue
+    [[ -d ${target} && ! -L ${target} ]] && die "Cannot stow ${rel}: ${target} is a directory."
+    # Reclaim every symlink, even a same-content chain through an old path:
+    # stow only accepts links it wrote itself and aborts the whole package
+    # on foreign ones, so canonical equality is not enough to leave one.
+    if [[ ! -L ${target} && "$(realpath -m -- "${target}")" == "$(realpath -m -- "${src}")" ]]; then
+      continue
+    fi
+    log_info "Overwriting ${target}"
+    rm -f -- "${target}"
+  done < <(fedora_overlay_files "${overlay_dir}")
+  stow -R --no-folding --ignore='(^|/)node_modules(/|$)' -d "$(dirname -- "${overlay_dir}")" -t "${HOME}" "$(basename -- "${overlay_dir}")"
+  log_ok 'Fedora overlay stowed.'
+}
+
 # Link the Arch overlay after shared stow, so known overrides (Ghostty) win.
-# Arch-only; Fedora returns silently. Warns (not dies) without the overlay so
+# Self-gated (unset returns silently) and caller-gated: single-valued
+# DISTRO runs exactly one overlay. Warns (not dies) without the overlay so
 # plain stow stays usable before home-arch/ lands; arch-setup itself fails
 # loudly instead (see arch_load_desktop_or_die).
 # No backup logic: same overwrite/no-backup contract as shared stow.
 stow_arch_overlay() {
-  [[ ${DISTRO} == arch ]] || return 0
+  [[ ${DISTRO:-} == arch ]] || return 0
   [[ -d ${ARCH_HOME_OVERLAY_DIR} ]] || { log_warn 'home-arch/ has not landed yet; skipping the Arch overlay.'; return 0; }
   require_command stow
   log_step "Linking home-arch/ into ${HOME} (conflicts are overwritten, no backup)"
@@ -632,7 +678,11 @@ stow_arch_overlay() {
     target="${HOME}/${rel}"
     [[ -e ${target} || -L ${target} ]] || continue
     [[ -d ${target} && ! -L ${target} ]] && die "Cannot stow ${rel}: ${target} is a directory."
-    [[ "$(realpath -m -- "${target}")" == "$(realpath -m -- "${src}")" ]] && continue
+    # Same symlink reclaim as the Fedora overlay: stow aborts on any link
+    # it did not write itself, including same-content pre-move chains.
+    if [[ ! -L ${target} && "$(realpath -m -- "${target}")" == "$(realpath -m -- "${src}")" ]]; then
+      continue
+    fi
     log_info "Overwriting ${target}"
     rm -f -- "${target}"
   done < <(arch_overlay_files)
@@ -651,7 +701,7 @@ arch_prune_stale_shared_links() {
   # body no matter who calls this helper.
   [[ ${DISTRO:-} == arch ]] || return 0
   local rel target
-  for rel in ${ARCH_SUPERSEDED_SHARED_PATHS[@]+"${ARCH_SUPERSEDED_SHARED_PATHS[@]}"}; do
+  for rel in ${HOME_COMPAT_FORWARD_PATHS[@]+"${HOME_COMPAT_FORWARD_PATHS[@]}"}; do
     # Overlay-provided paths were already reclaimed by the overlay sweep above.
     [[ -e ${ARCH_HOME_OVERLAY_DIR}/${rel} || -L ${ARCH_HOME_OVERLAY_DIR}/${rel} ]] && continue
     target="${HOME}/${rel}"
@@ -731,6 +781,7 @@ cmd_init() {
   ensure_nvidia
   stow_dotfiles
   stow_arch_overlay
+  stow_fedora_overlay
   sync_herdr_plugins
   set_fish_shell
   if [[ ${DISTRO} == arch ]]; then
@@ -751,6 +802,7 @@ cmd_update() {
   ensure_nvidia
   stow_dotfiles
   stow_arch_overlay
+  stow_fedora_overlay
   sync_herdr_plugins
   if [[ ${DISTRO} == arch ]]; then
     log_info 'Arch system provisioning is separate and idempotent: ./dot arch-check, then ./dot arch-setup.'
@@ -763,6 +815,7 @@ cmd_stow() {
   require_user
   stow_dotfiles
   stow_arch_overlay
+  stow_fedora_overlay
 }
 
 # Bundle entries missing from this machine, one `verb "name"` per line.
@@ -843,9 +896,9 @@ cmd_doctor() {
   local src rel target link_failed=0
   while IFS= read -r -d '' src; do
     rel=${src#"${HOME_DIR}/"}
-    # Arch-superseded shared paths are intentionally not stowed; the overlay
-    # check below owns them. Fedora checks every shared file, as before.
-    arch_path_is_superseded "${rel}" && continue
+    # Forwarding aliases are never asserted from shared home/ on any distro;
+    # each distro asserts its own real copy from its own tree below.
+    home_path_is_compat_forward "${rel}" && continue
     target="${HOME}/${rel}"
     if [[ ! -L ${target} ]]; then
       log_error "${target} is not a symlink into home/. Run ./dot stow."
@@ -868,7 +921,20 @@ cmd_doctor() {
       fi
     done < <(arch_overlay_files)
   fi
-  if ((link_failed)); then failed=1; else log_ok 'All symlinks point at home/.'; fi
+  if [[ ${DISTRO} == fedora && -d ${FEDORA_HOME_OVERLAY_DIR} ]]; then
+    while IFS= read -r -d '' src; do
+      rel=${src#"${FEDORA_HOME_OVERLAY_DIR}/"}
+      target="${HOME}/${rel}"
+      if [[ ! -L ${target} ]]; then
+        log_error "${target} is not a symlink into home-fedora/. Run ./dot stow."
+        link_failed=1
+      elif [[ "$(realpath -m -- "${target}")" != "$(realpath -m -- "${src}")" ]]; then
+        log_error "${target} points elsewhere. Run ./dot stow."
+        link_failed=1
+      fi
+    done < <(fedora_overlay_files)
+  fi
+  if ((link_failed)); then failed=1; else log_ok 'All symlinks point at their selected sources.'; fi
 
   ((failed == 0)) || die 'Doctor found the problems listed above.'
   log_ok 'Doctor passed: helpers, packages, plugins, symlinks, and login shell look good.'

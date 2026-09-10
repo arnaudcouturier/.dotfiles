@@ -80,7 +80,7 @@ arch_desktop_install_overlay >/dev/null
 test_arch_assert_eq "${TEST_ARCH_REPO_ROOT}/home-arch/.config/mpv/mpv.conf" \
   "$(realpath -m -- "${TEST_ARCH_HOME}/.config/mpv/mpv.conf")" 'overlay reclaims mpv.conf'
 
-# --- dot interplay, Arch: shared stow skips superseded paths and never
+# --- dot interplay, Arch: shared stow skips forwarding aliases and never
 # --- reclaims the overlay; repeated cycles stay converged. ---
 HOME2="${TEST_ARCH_SANDBOX}/home2"
 mkdir -p -- "${HOME2}"
@@ -88,34 +88,45 @@ export HOME="${HOME2}"
 DISTRO=arch
 stow_dotfiles >/dev/null
 [[ ! -e ${HOME2}/.config/ghostty/config && ! -L ${HOME2}/.config/ghostty/config ]] \
-  || test_arch_die 'Arch shared stow deployed superseded ghostty'
+  || test_arch_die 'Arch shared stow deployed forwarding-alias ghostty'
 [[ ! -e ${HOME2}/.config/hypr/input.lua && ! -L ${HOME2}/.config/hypr/input.lua ]] \
-  || test_arch_die 'Arch shared stow deployed superseded input.lua'
+  || test_arch_die 'Arch shared stow deployed forwarding-alias input.lua'
 stow_arch_overlay >/dev/null
 test_arch_assert_eq "${TEST_ARCH_REPO_ROOT}/home-arch/.config/ghostty/config" \
   "$(realpath -m -- "${HOME2}/.config/ghostty/config")" 'overlay ghostty wins on Arch'
 stow_dotfiles >/dev/null
 test_arch_assert_eq "${TEST_ARCH_REPO_ROOT}/home-arch/.config/ghostty/config" \
-  "$(realpath -m -- "${HOME2}/.config/ghostty/config")" 'repeat shared stow cannot restore DMS ghostty'
+  "$(realpath -m -- "${HOME2}/.config/ghostty/config")" 'repeat shared stow keeps Arch ghostty'
 [[ ! -e ${HOME2}/.config/hypr/input.lua && ! -L ${HOME2}/.config/hypr/input.lua ]] \
-  || test_arch_die 'repeat shared stow restored excluded input.lua'
+  || test_arch_die 'repeat shared stow restored forwarding-alias input.lua'
 
-# --- dot interplay, Fedora: shared stow unchanged, overlay a no-op. ---
+# --- dot interplay, Fedora: shared stow skips forwarding aliases, the ---
+# --- Fedora overlay provides the real copies, the Arch overlay stays out. ---
 HOME3="${TEST_ARCH_SANDBOX}/home3"
 mkdir -p -- "${HOME3}"
 export HOME="${HOME3}"
 DISTRO=fedora
 export DISTRO
 stow_dotfiles >/dev/null
-test_arch_assert_eq "${TEST_ARCH_REPO_ROOT}/home/.config/ghostty/config" \
-  "$(realpath -m -- "${HOME3}/.config/ghostty/config")" 'Fedora still stows shared ghostty'
-test_arch_assert_eq "${TEST_ARCH_REPO_ROOT}/home/.config/hypr/input.lua" \
-  "$(realpath -m -- "${HOME3}/.config/hypr/input.lua")" 'Fedora still stows shared input.lua'
+[[ ! -e ${HOME3}/.config/ghostty/config && ! -L ${HOME3}/.config/ghostty/config ]] \
+  || test_arch_die 'Fedora shared stow deployed forwarding-alias ghostty'
+[[ ! -e ${HOME3}/.config/hypr/input.lua && ! -L ${HOME3}/.config/hypr/input.lua ]] \
+  || test_arch_die 'Fedora shared stow deployed forwarding-alias input.lua'
+stow_fedora_overlay >/dev/null
+test_arch_assert_eq "${TEST_ARCH_REPO_ROOT}/home-fedora/.config/ghostty/config" \
+  "$(realpath -m -- "${HOME3}/.config/ghostty/config")" 'Fedora overlay provides ghostty'
+test_arch_assert_eq "${TEST_ARCH_REPO_ROOT}/home-fedora/.config/hypr/input.lua" \
+  "$(realpath -m -- "${HOME3}/.config/hypr/input.lua")" 'Fedora overlay provides input.lua'
 stow_arch_overlay >/dev/null
 [[ ! -e ${HOME3}/.config/mpv/mpv.conf ]] \
-  || test_arch_die 'Fedora overlay stow deployed Arch files'
+  || test_arch_die 'Arch overlay stow deployed Arch files on Fedora'
+test_arch_assert_eq "${TEST_ARCH_REPO_ROOT}/home-fedora/.config/ghostty/config" \
+  "$(realpath -m -- "${HOME3}/.config/ghostty/config")" 'Arch overlay cannot displace Fedora ghostty'
+stow_dotfiles >/dev/null
+test_arch_assert_eq "${TEST_ARCH_REPO_ROOT}/home-fedora/.config/ghostty/config" \
+  "$(realpath -m -- "${HOME3}/.config/ghostty/config")" 'repeat shared stow keeps Fedora ghostty'
 
 export HOME="${TEST_ARCH_HOME}"
 test_arch_assert_not_called sudo 'overlay integration never elevates'
 test_arch_assert_no_live_paths 'overlay integration'
-printf 'Overlay install converges, defends its shadows, and leaves Fedora alone.\n'
+printf 'Overlay install converges, defends its shadows, and honors per-distro selection.\n'
