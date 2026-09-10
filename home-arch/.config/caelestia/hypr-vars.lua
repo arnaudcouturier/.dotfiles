@@ -31,9 +31,16 @@
 -- (see the arch-desktop night light patch). false keeps new sessions
 -- without automatic night light; SUPER + SHIFT + N still toggles the
 -- running adjustment for this session (see hypr-user.lua).
+--
+-- windowOpacity is the default window transparency (upstream default 0.95
+-- in the deployed variables.lua). On by default; SUPER + SHIFT + O flips
+-- between this and opaque via hypr-opacity-toggle, which remembers a
+-- customized level across the round trip, so keep bespoke values here and
+-- the toggle honors them.
 return {
     kbShowPanels        = "SUPER + B",
     automaticNightLight = false,
+    windowOpacity       = 0.95,
 
     terminal             = "ghostty",
     browser              = "brave-origin",

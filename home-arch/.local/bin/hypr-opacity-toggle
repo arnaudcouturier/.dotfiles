@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+# Toggle window transparency between opaque and vars.windowOpacity.
+# Managed by the arch-desktop overlay (home-arch/); stowed as a symlink,
+# installed executable (mode 0755). Bound to SUPER + SHIFT + O from the
+# compositor-owned hypr-user.lua (same file documents the key).
+#
+# The opacity rule lives in hypr-vars.lua (user-owned); this script flips
+# that one value and reloads Hyprland, so the file itself is the state and
+# nothing can drift across sessions. Going opaque remembers the current
+# level beside it and restores exactly that on the way back, so a customized
+# transparency level survives the round trip. A reload is safe here: the
+# session startup block (hyprland.start in execs.lua) does not re-fire on
+# reload (verified: daemon counts identical across reloads), so nothing
+# double-starts. Absolute paths throughout: Hyprland hands exec a thin PATH.
+set -uo pipefail
+
+VARS="${HOME}/.config/caelestia/hypr-vars.lua"
+STATE_DIR="${XDG_STATE_HOME:-${HOME}/.local/state}/caelestia"
+SAVED="${STATE_DIR}/opacity-transparent"
+FALLBACK=0.95 # upstream variables.lua default; used when nothing was saved
+
+HYPRCTL=/usr/bin/hyprctl
+NOTIFY=/usr/bin/notify-send
+
+[[ -x ${HYPRCTL} ]] || { printf 'hypr-opacity-toggle: %s missing\n' "${HYPRCTL}" >&2; exit 1; }
+[[ -f ${VARS} ]] || { printf 'hypr-opacity-toggle: %s missing\n' "${VARS}" >&2; exit 1; }
+
+notify() {
+  [[ -x ${NOTIFY} ]] || return 0
+  "${NOTIFY}" --urgency=low --transient --expire-time=1500 --app-name=Caelestia "$1" 2>/dev/null || true
+}
+
+current="$(sed -nE 's/^[[:space:]]*windowOpacity[[:space:]]*=[[:space:]]*([0-9]+(\.[0-9]+)?).*/\1/p' "${VARS}" | head -n1)"
+[[ -n ${current} ]] || current=${FALLBACK}
+
+if [[ ${current} == 1 || ${current} == 1.0 ]]; then
+  target=${FALLBACK}
+  [[ -f ${SAVED} ]] && target="$(cat -- "${SAVED}")"
+  rm -f -- "${SAVED}"
+  message='Transparency on'
+else
+  mkdir -p -- "${STATE_DIR}"
+  printf '%s\n' "${current}" >"${SAVED}"
+  target=1
+  message='Transparency off'
+fi
+[[ ${target} =~ ^[0-9]+(\.[0-9]+)?$ ]] \
+  || { printf 'hypr-opacity-toggle: refusing non-numeric opacity %s\n' "${target}" >&2; exit 1; }
+
+if grep -Eq '^[[:space:]]*windowOpacity[[:space:]]*=' "${VARS}"; then
+  sed -i -E "s/^([[:space:]]*windowOpacity[[:space:]]*=).*/\1 ${target},/" "${VARS}"
+else
+  [[ $(tail -n1 -- "${VARS}") == '}' ]] \
+    || { printf 'hypr-opacity-toggle: %s ends unexpectedly; refusing to append\n' "${VARS}" >&2; exit 1; }
+  sed -i -e '$ i\    windowOpacity = '"${target}"',' "${VARS}"
+fi
+
+"${HYPRCTL}" reload >/dev/null 2>&1 \
+  || { printf 'hypr-opacity-toggle: Hyprland reload failed\n' >&2; exit 1; }
+notify "${message}"

@@ -195,6 +195,7 @@ load_descriptions() {
 2|SUPER + F|Fullscreen window
 2|SUPER + ALT + F|Fullscreen window (bordered)
 2|SUPER + ALT + Space|Toggle floating for window
+2|SUPER + SHIFT + O|Toggle window transparency
 2|SUPER + Q|Close window
 2|ALT + Tab|Next window in group
 2|ALT + SHIFT + Tab|Previous window in group

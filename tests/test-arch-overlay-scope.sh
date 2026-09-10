@@ -87,6 +87,21 @@ if grep -rn -i 'arnaudc\|arenwald' "${OVERLAY}" 2>/dev/null; then
   scope_fail 'overlay hardcodes user identity'
 fi
 
+# --- Opacity toggle: template default on, keybind plus helper present. ---
+grep -Eq '^[[:space:]]*windowOpacity[[:space:]]*=[[:space:]]*0\.95,' \
+  "${OVERLAY}/.config/caelestia/hypr-vars.lua" \
+  || scope_fail 'overlay hypr-vars.lua does not pin windowOpacity 0.95 (transparency on by default)'
+grep -Fq 'SUPER + SHIFT + O' "${OVERLAY}/.config/caelestia/hypr-user.lua" \
+  || scope_fail 'overlay hypr-user.lua lacks the SUPER + SHIFT + O transparency toggle'
+grep -Fq 'hypr-opacity-toggle' "${OVERLAY}/.config/caelestia/hypr-user.lua" \
+  || scope_fail 'overlay transparency bind does not call hypr-opacity-toggle'
+[[ -f ${OVERLAY}/.local/bin/hypr-opacity-toggle && -x ${OVERLAY}/.local/bin/hypr-opacity-toggle ]] \
+  || scope_fail 'hypr-opacity-toggle helper missing or not executable'
+bash -n -- "${OVERLAY}/.local/bin/hypr-opacity-toggle" \
+  || scope_fail 'hypr-opacity-toggle fails bash -n'
+grep -Fq 'Toggle window transparency' "${OVERLAY}/.local/bin/hypr-keybinds" \
+  || scope_fail 'keybind cheatsheet lacks the transparency toggle row'
+
 if ((failures > 0)); then
   printf '%d overlay-scope violation(s).\n' "${failures}" >&2
   exit 1

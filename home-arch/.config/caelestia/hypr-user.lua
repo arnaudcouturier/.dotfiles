@@ -16,7 +16,9 @@
 -- scale = 1 })` at caelestia-dots @ 1ee7a98 hypr/hyprland.lua:53-59) and
 -- must never be edited (upstream README CAUTION). This file is the
 -- supported override: deployed to ~/.config/caelestia/hypr-user.lua on Arch
--- and loaded last via `require("hypr-user")`. No active monitor block is
+-- and loaded last via `require("hypr-user")`. Use the exact output name
+-- from `hyprctl monitors` (here DP-5): a name the compositor does not know
+-- matches nothing, silently. No active monitor block is
 -- committed below — find your outputs with `hyprctl monitors`, then add
 -- your own `hl.monitor` call. Minimal shape (commented example only):
 --
@@ -71,6 +73,17 @@ hl.bind(
         "/usr/bin/notify-send --urgency=low --transient --expire-time=1500 " ..
         "--app-name=Gammastep --icon=night-light-symbolic \"Night light on\"; fi'"
     )
+)
+
+-- SUPER + SHIFT + O toggles window transparency (opaque <-> windowOpacity
+-- in hypr-vars.lua). The helper flips that one value and reloads Hyprland,
+-- so the file is the state and nothing drifts; going opaque remembers a
+-- customized level and restores it on the way back. A reload is safe: the
+-- session startup block does not re-fire on reload (verified), so nothing
+-- double-starts. Absolute path and two-arg hl.bind like the binds above.
+hl.bind(
+    "SUPER + SHIFT + O",
+    hl.dsp.exec_cmd(os.getenv("HOME") .. "/.local/bin/hypr-opacity-toggle")
 )
 
 -- Hardware video decoding for the browser: NVIDIA-only, probed at
