@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
-# lib/arch-limine.sh — Tokyo Night Limine theming plus a safe firmware entry.
+# lib/arch-limine.sh — Tokyo Night Limine theming, a Windows dual-boot entry,
+# plus a safe firmware entry.
 #
 # Themes every limine.conf the firmware might read (which one wins depends on
-# how firmware reports the boot volume) with a guarded marker block, then
+# how firmware reports the boot volume) with a guarded marker block, ensures
+# one Windows chainload entry when this ESP carries Microsoft's loader, then
 # ensures exactly one named Limine firmware entry exists. Entries are only
 # ever added, never removed or reordered; the archinstall entry is kept.
 
@@ -107,6 +109,65 @@ arch_limine_apply_appearance_to_config() {
     || { rm -f -- "${body}" "${body}.src" "${staged}"; die "Could not replace ${config}."; }
   rm -f -- "${body}" "${body}.src" "${staged}"
   log_ok "Themed ${config} without touching ${after} boot entr(y/ies)."
+}
+
+# True when this ESP carries Microsoft's loader (same-drive dual boot).
+# Case-insensitive search: vfat preserves case but FAT short names match
+# either way, and Windows writes the canonical casing. No disk or PARTUUID
+# is hardcoded; the caller passes the config's own ESP mount.
+arch_limine_windows_loader_present() {
+  local esp=$1 hit
+  hit="$(sudo find "${esp}/EFI" "${esp}/efi" -maxdepth 4 -iname bootmgfw.efi -print -quit 2>/dev/null || true)"
+  [[ -n ${hit} ]]
+}
+
+# Ensure one Windows chainload entry exists in this config when its ESP
+# carries Microsoft's loader. Drive-independent boot():/... keeps it working
+# without hardcoding this machine's disk layout. Idempotent: skips when the
+# config already chainloads bootmgfw.efi under any title, and skips cleanly
+# on single-boot ESPs. Entries are only appended, never removed or reordered.
+# FAT-safe: stages beside the target and renames into place, like theming.
+arch_limine_ensure_windows_entry() {
+  local config=$1
+  [[ ! -L ${config} ]] || die "Refusing to edit a linked bootloader config: ${config}"
+  local mount_target body staged backup before after
+  mount_target="$(arch_limine_mount_field TARGET "${config}")" \
+    || die "Unable to identify the filesystem holding ${config}."
+  arch_limine_ensure_mount_writable "${mount_target}"
+  # Any existing chainload (whatever its title) owns the slot already.
+  if sudo grep -qi -- bootmgfw.efi "${config}" 2>/dev/null; then
+    log_ok "${config} already chainloads Windows."
+    return 0
+  fi
+  arch_limine_windows_loader_present "${mount_target}" \
+    || { log_info "No Windows loader on ${mount_target}; skipping the Windows entry."; return 0; }
+  log_step "Adding the Windows entry (${config})"
+  body="$(mktemp "${TMPDIR:-/tmp}/arch-limine-windows.XXXXXX")" \
+    || die "Cannot stage the Windows entry for ${config}."
+  staged="${body}.staged"
+  # Only the read needs privilege; the redirect target is a user-owned temp.
+  # shellcheck disable=SC2024
+  sudo sed -n '1,$p' "${config}" >"${body}.src" \
+    || { rm -f -- "${body}" "${body}.src" "${staged}"; die "Could not read ${config}."; }
+  before="$(arch_limine_count_boot_entries "${body}.src")"
+  cp -- "${body}.src" "${staged}" \
+    || { rm -f -- "${body}" "${body}.src" "${staged}"; die "Could not assemble the new ${config}."; }
+  # A leading blank line separates the appended entry from the previous one;
+  # boot(): resolves to the ESP holding this config, so no disk is named.
+  printf '\n/Windows\n    protocol: efi\n    path: boot():/EFI/Microsoft/Boot/bootmgfw.efi\n' >>"${staged}" \
+    || { rm -f -- "${body}" "${body}.src" "${staged}"; die "Could not assemble the new ${config}."; }
+  after="$(arch_limine_count_boot_entries "${staged}")"
+  [[ ${after} == $((before + 1)) ]] \
+    || { rm -f -- "${body}" "${body}.src" "${staged}"; die "Boot entry count changed ${before} -> ${after}; ${config} untouched."; }
+  backup="${config}.dotfiles-backup"
+  sudo test -e "${backup}" || { sudo cp --no-preserve=ownership,mode -- "${config}" "${backup}"; log_warn "Preserved ${config} as ${backup}."; }
+  # Stage on the ESP itself so the rename never crosses filesystems.
+  sudo cp --no-preserve=mode,ownership -- "${staged}" "${config}.dotfiles-new" \
+    || { rm -f -- "${body}" "${body}.src" "${staged}"; die "Could not stage ${config}."; }
+  sudo mv -f -- "${config}.dotfiles-new" "${config}" \
+    || { rm -f -- "${body}" "${body}.src" "${staged}"; die "Could not replace ${config}."; }
+  rm -f -- "${body}" "${body}.src" "${staged}"
+  log_ok "Added the Windows entry to ${config}."
 }
 
 # Confirm an EFI binary identifies as Limine. EFI/BOOT holds the generic
@@ -234,7 +295,8 @@ arch_limine_find_labelled_entry() {
   return 1
 }
 
-# Theme all known configs, then ensure a named entry boots this loader.
+# Theme all known configs, ensure the Windows dual-boot entry where this
+# machine dual-boots, then ensure a named entry boots this loader.
 # Skips cleanly with no config, on BIOS boot, or when the loader sits off
 # vfat. Isolated in a subshell: the ESP-remount EXIT trap must never replace
 # dot's cleanup_dot (sudo-refresher kill plus temp cleanup), which lives in
@@ -273,6 +335,9 @@ arch_limine_setup_isolated() {
   fi
   for candidate in "${configs[@]}"; do
     arch_limine_apply_appearance_to_config "${candidate}" "${appearance}"
+  done
+  for candidate in "${configs[@]}"; do
+    arch_limine_ensure_windows_entry "${candidate}"
   done
   if [[ ! -d /sys/firmware/efi ]]; then
     log_warn 'BIOS boot detected; firmware-entry registration skipped.'
@@ -333,15 +398,24 @@ arch_limine_setup_isolated() {
       log_ok "Created the Limine firmware entry on ${disk} part ${part_no}."
     fi
   fi
-  log_ok 'Limine is themed and registered; existing entries were kept.'
+  log_ok 'Limine is themed, Windows is chainloaded where present, and registered; existing entries were kept.'
 }
 
-# Check Limine theming and registration without changing anything. Unreadable
-# /boot (no cached sudo) is reported, not treated as failure.
+# Check Limine theming, the Windows dual-boot entry, and registration
+# without changing anything. Unreadable /boot (no cached sudo) is reported,
+# not treated as failure.
 arch_limine_verify() {
-  local failed=0 found=0 candidate
+  local failed=0 found=0 candidate windows_loader=0 esp_probe
   local -a reader=()
   sudo -n true >/dev/null 2>&1 && reader=(sudo -n)
+  # Same-drive dual boot leaves Microsoft's loader on the ESP; when it is
+  # readable, every readable config must chainload it.
+  for esp_probe in /boot/EFI/Microsoft/Boot/bootmgfw.efi /boot/efi/EFI/Microsoft/Boot/bootmgfw.efi /efi/EFI/Microsoft/Boot/bootmgfw.efi; do
+    if "${reader[@]+"${reader[@]}"}" test -f "${esp_probe}" 2>/dev/null; then
+      windows_loader=1
+      break
+    fi
+  done
   for candidate in /boot/limine/limine.conf /boot/limine.conf \
     /boot/EFI/limine/limine.conf /boot/EFI/arch-limine/limine.conf /boot/EFI/BOOT/limine.conf \
     /boot/efi/limine/limine.conf /boot/efi/limine.conf \
@@ -352,6 +426,10 @@ arch_limine_verify() {
     found=1
     "${reader[@]+"${reader[@]}"}" grep -Fq "${ARCH_LIMINE_BEGIN_MARKER}" "${candidate}" 2>/dev/null \
       || { log_error "${candidate} lacks the palette block."; failed=1; }
+    if ((windows_loader == 1)); then
+      "${reader[@]+"${reader[@]}"}" grep -qi -- bootmgfw.efi "${candidate}" 2>/dev/null \
+        || { log_error "${candidate} lacks a Windows chainload entry."; failed=1; }
+    fi
   done
   ((found == 1)) || log_warn 'No readable limine.conf; rerun with cached sudo on an ESP-rooted boot.'
   if efibootmgr -v 2>/dev/null | grep -Eq '^[Bb]oot[0-9A-Fa-f]{4}[*]? +.*[Ll]imine'; then
