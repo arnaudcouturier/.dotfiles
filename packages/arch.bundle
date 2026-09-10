@@ -18,6 +18,7 @@ repo "ripgrep" # fast code search
 repo "bat" # cat with syntax highlighting
 repo "glow" # terminal markdown reader
 repo "direnv" # per-directory env (hooked in fish config, idle without .envrc)
+repo "mise" # dev tool version manager (fish config activates it when present)
 repo "lazygit" # terminal Git UI (wires the shared lg abbreviation)
 
 # Plumbing for these dotfiles

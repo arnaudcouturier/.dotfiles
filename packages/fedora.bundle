@@ -26,6 +26,8 @@ repo "ripgrep" # fast code search
 repo "bat" # cat with syntax highlighting
 repo "glow" # terminal markdown reader
 repo "direnv" # per-directory env (hooked in fish config, idle without .envrc)
+copr "jdxcode/mise" # mise's own install docs point Fedora 41+ here
+repo "mise" # dev tool version manager (fish config activates it when present)
 
 # Plumbing for these dotfiles
 repo "stow" # GNU Stow, deploys home/ via symlinks
