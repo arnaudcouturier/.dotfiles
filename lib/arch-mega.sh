@@ -55,6 +55,15 @@ readonly ARCH_MEGA_KEY_URL='https://mega.nz/linux/repo/Arch_Extra/x86_64/DEB_Arc
 # Vendor packages this repository exists to provide, client before plugin
 # (thunar-megasync DEPENDS megasync>=5.3.0).
 readonly ARCH_MEGA_PACKAGES=(megasync thunar-megasync)
+# The comment markers MEGA's own package writes around the section it adds to
+# pacman.conf (observed verbatim on a provisioned machine, 2026-09-10). The
+# vendor installs its own [DEB_Arch_Extra] block with the weaker
+# 'SigLevel = Required TrustedOnly', which is how a machine ends up with two
+# sections. We re-emit the markers around our pinned block so a vendor script
+# that looks for them finds its own bookkeeping in place instead of appending
+# a second copy; they are comments, so they change nothing for pacman.
+readonly ARCH_MEGA_VENDOR_MARKER_BEGIN='###REPO for MEGA###'
+readonly ARCH_MEGA_VENDOR_MARKER_END='###END REPO for MEGA###'
 
 # Pacman keyring location. Production always uses the default; tests point it
 # at a temp dir through this variable (same override precedent as
@@ -122,17 +131,20 @@ arch_mega_vendor_repo_configured() {
   arch_mega_section_is_pinned "$(arch_mega_config_section_body "${config}")"
 }
 
-# Print ${config} with every [DEB_Arch_Extra] section after the first
-# removed. Blank lines are held back and flushed by the next kept line, so a
-# duplicate that was appended with its own leading blank line takes that
-# line with it; every other byte of the file survives verbatim.
-arch_mega_config_without_duplicate_sections() {
+# Print ${config} with every [DEB_Arch_Extra] section removed, header and
+# body alike. Blank lines are held back and flushed by the next kept line, so
+# a section that was appended with its own leading blank line takes that line
+# with it; every other byte of the file survives verbatim.
+arch_mega_config_without_vendor_sections() {
   local config=$1
-  awk -v section='[DEB_Arch_Extra]' '
+  awk -v section='[DEB_Arch_Extra]' \
+      -v begin_marker="${ARCH_MEGA_VENDOR_MARKER_BEGIN}" \
+      -v end_marker="${ARCH_MEGA_VENDOR_MARKER_END}" '
+    # The vendor markers go with the block: dropped wherever they sit, then
+    # re-emitted around the pinned section, so neither can accumulate.
+    $0 == begin_marker || $0 == end_marker { next }
     /^[[:space:]]*$/ { blanks = blanks $0 "\n"; next }
-    /^\[/ {
-      if ($0 == section) { seen++; drop = (seen > 1) } else { drop = 0 }
-    }
+    /^\[/ { drop = ($0 == section) }
     { if (!drop) { printf "%s", blanks; print }; blanks = "" }
     END { printf "%s", blanks }
   ' "${config}"
@@ -218,98 +230,49 @@ arch_mega_deploy_staged_config() {
   CLEANUP_PATH="${prev_cleanup}"
 }
 
-# Collapse a config that holds several [DEB_Arch_Extra] sections down to the
-# first one. pacman registers one database per repository name and refuses a
-# second registration of the same name ("failed to register sync database",
-# which yay surfaces as "Database should be null"), so a duplicated section
-# breaks every pacman transaction on the machine — and `init` is the
-# supported repair path, so repair it here rather than hand the user a
-# manual edit. Only copies that all carry exactly the pinned directives
-# collapse: the surviving file is byte for byte what a fresh append would
-# have produced. A copy that drifts dies instead, naming the header lines,
-# because choosing which repository definition survives is a human decision.
-arch_mega_collapse_duplicate_sections() {
-  local config=$1 count=$2 live=$3
-  local prev_cleanup="${CLEANUP_PATH:-}" index staged
-  for ((index = 1; index <= count; index++)); do
-    arch_mega_section_is_pinned "$(arch_mega_config_section_body "${config}" "${index}")" && continue
-    die "arch-mega: ${count} [DEB_Arch_Extra] sections in ${config} (lines $(arch_mega_config_section_lines "${config}")) and they do not all carry the pinned Server/SigLevel; delete the copies you do not want by hand, keeping one."
-  done
+# Bring ${config} to exactly one pinned [DEB_Arch_Extra] section: strip every
+# copy that is there, then append the canonical block after the official
+# repos (pacman resolves first-match-wins, so a vendor-last position keeps
+# vendor names from ever shadowing official packages). This is the only
+# writer of the section, so every starting state — missing, duplicated, or
+# drifted — converges on the same end state instead of asking for a hand
+# edit. Convergence cannot weaken anything: the block is generated from the
+# pinned constants, so a rewrite can only restore the strong Server/SigLevel
+# over whatever drifted. Duplicates matter because pacman registers one
+# database per repository name and refuses a second registration ("failed to
+# register sync database", which yay surfaces as "Database should be null"),
+# which breaks every pacman transaction on the machine. The pre-repair file
+# survives once at ${config}.dotfiles-backup, and the staged file is parsed
+# before it replaces anything.
+arch_mega_write_pinned_section() {
+  local config=$1 live=$2 count=$3
+  local prev_cleanup="${CLEANUP_PATH:-}" staged previous_lines
+  # Read the header lines before the write: the backup is only taken on the
+  # first edit, so quoting it afterwards could name a stale file.
+  previous_lines="$(arch_mega_config_section_lines "${config}")"
   staged="$(mktemp "${TMPDIR:-/tmp}/arch-mega-pacman.XXXXXX")" \
     || die 'arch-mega: cannot stage the pacman config.'
   CLEANUP_PATH="${staged}"
-  arch_mega_config_without_duplicate_sections "${config}" >"${staged}" \
+  arch_mega_config_without_vendor_sections "${config}" >"${staged}" \
     || arch_mega_abort_staged "${staged}" "${prev_cleanup}" "arch-mega: cannot read ${config}."
+  printf '\n%s\n[%s]\nSigLevel = Required DatabaseRequired\nServer = %s\n%s\n' \
+    "${ARCH_MEGA_VENDOR_MARKER_BEGIN}" "${ARCH_MEGA_REPO_SECTION}" \
+    "${ARCH_MEGA_REPO_SERVER}" "${ARCH_MEGA_VENDOR_MARKER_END}" >>"${staged}"
   arch_mega_deploy_staged_config "${config}" "${staged}" "${live}" "${prev_cleanup}"
-  log_ok "arch-mega: collapsed ${count} duplicate [DEB_Arch_Extra] sections in ${config} into one."
+  if ((count > 0)); then
+    log_warn "arch-mega: replaced ${count} duplicate or drifted [DEB_Arch_Extra] section(s) in ${config} (was at line(s) ${previous_lines}) with the pinned definition; the previous file is at ${config}.dotfiles-backup."
+  fi
+  log_ok 'arch-mega: MEGA vendor repository configured (Thunar file manager integration source).'
 }
 
-# Set up the MEGA vendor repository: verify architecture, classify the
-# existing config, ensure the pinned key is added and locally signed, then
-# append the repository after the official ones and revalidate. Safe to
-# re-run: a converged machine changes nothing and fetches nothing. Dies
-# fail-loud on a wrong/duplicate/foreign section instead of appending a
-# second one or silently relaxing signature policy. The optional path is a
-# test seam (tests exercise edits on temp files); production always uses the
-# default. Call only after require_arch_system and begin_elevation.
-arch_mega_setup_vendor_repo() {
-  local config=${1:-/etc/pacman.conf}
-  local keyring="${ARCH_MEGA_KEYRING_DIR:-/etc/pacman.d/gnupg}"
-  local live=false
-  if [[ ${config} == /etc/pacman.conf ]]; then
-    live=true
-  fi
-
-  # Vendor publishes Arch_Extra for x86_64 only: refuse anything else before
-  # any trust or config mutation.
-  local machine
-  machine="$(uname -m)"
-  [[ ${machine} == x86_64 ]] \
-    || die "arch-mega: unsupported architecture '${machine}': MEGA publishes Arch_Extra for x86_64 only."
-
-  [[ -r ${config} ]] || die "arch-mega: pacman config not found: ${config}."
-  if [[ ${live} == true ]]; then
-    require_command pacman-conf
-  fi
-  require_command curl
-  require_command gpg
-
-  # Classify the existing config before touching trust or files.
-  local count
-  count="$(arch_mega_config_section_count "${config}")"
-  if grep -qiE '^\[(mega|megasync)\][[:space:]]*$' -- "${config}"; then
-    die "arch-mega: a foreign [mega]/[megasync] section exists in ${config}; remove it by hand so only [DEB_Arch_Extra] configures the vendor repo."
-  fi
-  # Duplicates converge instead of blocking: identical copies collapse to
-  # one (and the count below then reads as a configured machine), while
-  # copies that disagree still die inside the collapse.
-  if ((count > 1)); then
-    arch_mega_collapse_duplicate_sections "${config}" "${count}" "${live}"
-    count="$(arch_mega_config_section_count "${config}")"
-    ((count == 1)) \
-      || die "arch-mega: ${count} [DEB_Arch_Extra] sections remain in ${config} after collapsing the duplicates; check the file."
-  fi
-  local needs_config=false
-  if ((count == 1)); then
-    arch_mega_vendor_repo_configured "${config}" \
-      || die "arch-mega: the [DEB_Arch_Extra] section in ${config} drifts from the pinned Server/SigLevel; fix it by hand instead of stacking a second section."
-  else
-    needs_config=true
-  fi
-
-  # Read-only trust probe first: a trusted key plus a converged config means
-  # zero changes and zero network below.
-  local trusted=false
-  arch_mega_key_trusted && trusted=true
-  if [[ ${needs_config} == false && ${trusted} == true ]]; then
-    if [[ ${live} == true ]]; then
-      pacman-conf --repo-list 2>/dev/null | grep -Fxq "${ARCH_MEGA_REPO_SECTION}" \
-        || die "arch-mega: [${ARCH_MEGA_REPO_SECTION}] is configured but pacman does not list it; check ${config}."
-    fi
-    log_ok 'arch-mega: MEGA vendor repository already configured and trusted.'
-    return 0
-  fi
-
+# Fetch, verify, add and locally sign the pinned vendor key. Called only
+# when the keyring probe says the key is not already trusted, so a machine
+# whose key is good does no network work at all — a config-only repair must
+# not hang or die on a flaky link with the repository still broken. Every
+# rejection here is fail-closed: nothing reaches the live keyring unless the
+# fetched file carries exactly the pinned fingerprint, one primary key, no
+# revocation, and a live validity.
+arch_mega_trust_vendor_key() {
   # Fetch the vendor key over TLS (no pipe-to-shell) and inspect it in an
   # isolated temp GNUPGHOME: the subshell owns its EXIT trap, so the caller's
   # traps are preserved and nothing touches the live keyring during
@@ -370,31 +333,87 @@ arch_mega_setup_vendor_repo() {
   # Add the verified local key file (never --recv-keys: a keyserver lookup
   # would defeat the pinned fetched source), then locally sign it so pacman
   # trusts vendor signatures under the default TrustedOnly policy.
-  if [[ ${trusted} == false ]]; then
-    sudo pacman-key --add "${tmpkey}" \
-      || { CLEANUP_PATH="${prev_cleanup}"; rm -f -- "${tmpkey}"; die 'arch-mega: pacman-key --add failed for the verified vendor key.'; }
-    sudo pacman-key --lsign-key "${ARCH_MEGA_KEY_FINGERPRINT}" \
-      || { CLEANUP_PATH="${prev_cleanup}"; rm -f -- "${tmpkey}"; die 'arch-mega: pacman-key --lsign-key failed for the vendor key.'; }
-  fi
+  sudo pacman-key --add "${tmpkey}" \
+    || { CLEANUP_PATH="${prev_cleanup}"; rm -f -- "${tmpkey}"; die 'arch-mega: pacman-key --add failed for the verified vendor key.'; }
+  sudo pacman-key --lsign-key "${ARCH_MEGA_KEY_FINGERPRINT}" \
+    || { CLEANUP_PATH="${prev_cleanup}"; rm -f -- "${tmpkey}"; die 'arch-mega: pacman-key --lsign-key failed for the vendor key.'; }
   rm -f -- "${tmpkey}"
   CLEANUP_PATH="${prev_cleanup}"
+}
 
-  # Append the repository AFTER the official ones at end of file: pacman
-  # resolves same-named packages first-match-wins, so a vendor-last position
-  # keeps vendor-only names (megasync, thunar-megasync, rhash-git) from ever
-  # shadowing official packages. Stage the complete file first and parse it
-  # before replacing, so a validation failure leaves the live config intact.
+# Set up the MEGA vendor repository: verify architecture, classify the
+# existing config, ensure the pinned key is added and locally signed, then
+# write the repository after the official ones and revalidate. Safe to
+# re-run: a converged machine changes nothing and fetches nothing, and every
+# other state — missing, duplicated, or drifted — converges on the pinned
+# section rather than stopping for a hand edit. That matters because the
+# vendor's own megasync package adds a second [DEB_Arch_Extra] block with a
+# weaker SigLevel, so a machine gets duplicated by an install nobody drove by
+# hand. Trust still fails loud: a wrong key, or a foreign [mega] section we
+# do not own, dies before any mutation, and the section written can only be
+# the pinned one, never a relaxed signature policy. The optional path is a
+# test seam (tests exercise edits on temp files); production always uses the
+# default. Call only after require_arch_system and begin_elevation.
+arch_mega_setup_vendor_repo() {
+  local config=${1:-/etc/pacman.conf}
+  local keyring="${ARCH_MEGA_KEYRING_DIR:-/etc/pacman.d/gnupg}"
+  local live=false
+  if [[ ${config} == /etc/pacman.conf ]]; then
+    live=true
+  fi
+
+  # Vendor publishes Arch_Extra for x86_64 only: refuse anything else before
+  # any trust or config mutation.
+  local machine
+  machine="$(uname -m)"
+  [[ ${machine} == x86_64 ]] \
+    || die "arch-mega: unsupported architecture '${machine}': MEGA publishes Arch_Extra for x86_64 only."
+
+  [[ -r ${config} ]] || die "arch-mega: pacman config not found: ${config}."
+  if [[ ${live} == true ]]; then
+    require_command pacman-conf
+  fi
+  require_command curl
+  require_command gpg
+
+  # Classify the existing config before touching trust or files. A foreign
+  # [mega]/[megasync] section is the one shape we never own: it configures
+  # some other repository under a name we cannot vouch for, so it still
+  # refuses. Everything under our own section name is ours to converge.
+  local count needs_config=true
+  count="$(arch_mega_config_section_count "${config}")"
+  if grep -qiE '^\[(mega|megasync)\][[:space:]]*$' -- "${config}"; then
+    die "arch-mega: a foreign [mega]/[megasync] section exists in ${config}; remove it by hand so only [DEB_Arch_Extra] configures the vendor repo."
+  fi
+  arch_mega_vendor_repo_configured "${config}" && needs_config=false
+
+  # Read-only trust probe first: a trusted key plus a converged config means
+  # zero changes and zero network below.
+  local trusted=false
+  arch_mega_key_trusted && trusted=true
+  if [[ ${needs_config} == false && ${trusted} == true ]]; then
+    if [[ ${live} == true ]]; then
+      pacman-conf --repo-list 2>/dev/null | grep -Fxq "${ARCH_MEGA_REPO_SECTION}" \
+        || die "arch-mega: [${ARCH_MEGA_REPO_SECTION}] is configured but pacman does not list it; check ${config}."
+    fi
+    log_ok 'arch-mega: MEGA vendor repository already configured and trusted.'
+    return 0
+  fi
+
+  # Trust work only when the local keyring is not already good: a
+  # config-only repair (the vendor package added its own duplicate section)
+  # then needs no network at all.
+  if [[ ${trusted} == false ]]; then
+    arch_mega_trust_vendor_key
+  fi
+
+  # One writer for every state that is not already converged — missing,
+  # duplicated, or drifted all end at the same pinned section. See the
+  # writer for why convergence can only strengthen the config, and for the
+  # vendor-last positioning that keeps vendor names from shadowing official
+  # packages.
   if [[ ${needs_config} == true ]]; then
-    local staged
-    staged="$(mktemp "${TMPDIR:-/tmp}/arch-mega-pacman.XXXXXX")" \
-      || die 'arch-mega: cannot stage the pacman config.'
-    CLEANUP_PATH="${staged}"
-    cat -- "${config}" >"${staged}" \
-      || arch_mega_abort_staged "${staged}" "${prev_cleanup}" "arch-mega: cannot read ${config}."
-    printf '\n[%s]\nSigLevel = Required DatabaseRequired\nServer = %s\n' \
-      "${ARCH_MEGA_REPO_SECTION}" "${ARCH_MEGA_REPO_SERVER}" >>"${staged}"
-    arch_mega_deploy_staged_config "${config}" "${staged}" "${live}" "${prev_cleanup}"
-    log_ok 'arch-mega: MEGA vendor repository configured (Thunar file manager integration source).'
+    arch_mega_write_pinned_section "${config}" "${live}" "${count}"
   else
     log_ok 'arch-mega: vendor key trust repaired.'
   fi

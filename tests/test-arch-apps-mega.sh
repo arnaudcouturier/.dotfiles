@@ -343,101 +343,117 @@ for mode in revoked expired; do
 done
 export TEST_GPG_SHOW_MODE=good
 
-# --- 5. duplicates repair; wrong / foreign sections still fail -----------
+# --- 5. every [DEB_Arch_Extra] state converges; foreign sections refuse ---
 
 PINNED_SERVER='https://mega.nz/linux/repo/Arch_Extra/$arch'
 PINNED_BODY="SigLevel = Required DatabaseRequired
 Server = ${PINNED_SERVER}"
 
-# One pinned section plus a second section carrying the given body.
-write_dup_conf() {
-  write_minimal_conf
-  printf '\n[DEB_Arch_Extra]\n%s\n' "${PINNED_BODY}" >>"${WORK}/pacman.conf"
-  printf '\n[DEB_Arch_Extra]\n%s\n' "$1" >>"${WORK}/pacman.conf"
+# A repaired config carries exactly one pinned section and no relaxed
+# signature policy anywhere in the file.
+assert_converged() {
+  local conf=$1 label=$2
+  test_arch_assert_eq 1 "$(grep -cE '^\[DEB_Arch_Extra\][[:space:]]*$' "${conf}")" "${label}: exactly one section"
+  arch_mega_vendor_repo_configured "${conf}" \
+    || test_arch_die "${label}: the surviving section is not the pinned one"
+  if grep -Eq 'TrustAll|DatabaseOptional|SigLevel = Never|SigLevel = Required TrustedOnly' "${conf}"; then
+    test_arch_die "${label}: repair left a relaxed signature policy in the file"
+  fi
 }
 
-# pacman registers one database per repository name and refuses a second
-# registration of the same name, so a duplicated section breaks every
-# transaction on the machine (yay reports it as "Database should be null").
-# init is the supported repair path: identical copies collapse to one.
+# The real machine, verbatim: dot writes the pinned block, then the vendor's
+# own megasync package appends a second [DEB_Arch_Extra] inside its
+# ###REPO for MEGA### markers with the weaker 'Required TrustedOnly'. pacman
+# registers one database per repository name and refuses a second
+# registration ("failed to register sync database", which yay surfaces as
+# "Database should be null"), so this state breaks every transaction on the
+# machine and nobody edited pacman.conf by hand to cause it.
 write_minimal_conf
 cp -- "${WORK}/pacman.conf" "${WORK}/append-reference.conf"
-write_dup_conf "${PINNED_BODY}"
-cp -- "${WORK}/pacman.conf" "${WORK}/dup.conf"
-export TEST_GPG_TRUST_MODE=trusted TEST_REPO_LIST='core extra multilib DEB_Arch_Extra'
-reset_calls
-run_setup "${WORK}/dup.conf"
-test_arch_assert_eq 0 "$(setup_status)" 'identical duplicate sections repair instead of blocking init'
-test_arch_assert_eq 1 "$(grep -cE '^\[DEB_Arch_Extra\][[:space:]]*$' "${WORK}/dup.conf")" 'collapse leaves exactly one section'
-grep -q 'collapsed 2 duplicate' "${WORK}/setup.out" \
-  || test_arch_die 'collapse must report what it repaired'
-assert_not_called 'curl ' 'a config-only repair fetches nothing'
-assert_not_called 'pacman-key --add' 'a config-only repair imports no key'
-cmp -s -- "${WORK}/pacman.conf" "${WORK}/dup.conf.dotfiles-backup" \
-  || test_arch_die 'collapse keeps the duplicated original as the backup'
-# The survivor is byte for byte what a fresh append produces: the repair
-# converges on one end state, it does not invent a second layout.
-reset_calls
-run_setup "${WORK}/append-reference.conf"
-test_arch_assert_eq 0 "$(setup_status)" 'reference append exits 0'
-cmp -s -- "${WORK}/dup.conf" "${WORK}/append-reference.conf" \
-  || test_arch_die 'collapsed config differs from a freshly appended one'
-
-# Copies that disagree are a human decision, never ours to pick: they die
-# before any trust or config mutation, naming the header lines.
-DRIFTED_BODIES=(
-  "${PINNED_BODY}
-Include = /tmp/evil.conf"
-  "SigLevel = Required DatabaseOptional
-Server = ${PINNED_SERVER}"
-  "SigLevel = Required DatabaseRequired
-Server = https://example.com/evil/\$arch"
-)
-for drift in "${DRIFTED_BODIES[@]}"; do
-  write_dup_conf "${drift}"
-  cp -- "${WORK}/pacman.conf" "${WORK}/dupdrift.conf"
-  export TEST_GPG_TRUST_MODE=untrusted
-  reset_calls
-  run_setup "${WORK}/dupdrift.conf"
-  [[ $(setup_status) != 0 ]] || test_arch_die "duplicate copy carrying <${drift}> must fail, never collapse"
-  grep -q 'do not all carry the pinned Server/SigLevel' "${WORK}/setup.out" \
-    || test_arch_die "drifted duplicate <${drift}> lacks the arch-mega: drift message"
-  grep -qE 'lines [0-9]+ [0-9]+' "${WORK}/setup.out" \
-    || test_arch_die 'drift message must name the section lines so the hand edit is a one-liner'
-  cmp -s -- "${WORK}/pacman.conf" "${WORK}/dupdrift.conf" \
-    || test_arch_die "drifted duplicate <${drift}> run touched the config"
-  [[ ! -e ${WORK}/dupdrift.conf.dotfiles-backup ]] \
-    || test_arch_die 'failed collapse must not leave a backup'
-  assert_not_called 'pacman-key --add' 'disagreeing duplicates must fail before trust mutation'
-done
-export TEST_GPG_TRUST_MODE=untrusted
-
-write_minimal_conf
-cat >>"${WORK}/pacman.conf" <<'EOF'
-
-[DEB_Arch_Extra]
-SigLevel = Required DatabaseOptional
-Server = https://mega.nz/linux/repo/Arch_Extra/$arch
-EOF
-cp -- "${WORK}/pacman.conf" "${WORK}/weak.conf"
-reset_calls
-run_setup "${WORK}/weak.conf"
-[[ $(setup_status) != 0 ]] || test_arch_die 'weakened SigLevel must fail, not silently relax'
-assert_not_called 'pacman-key --add' 'weak config must fail before trust mutation'
-
-write_minimal_conf
 cat >>"${WORK}/pacman.conf" <<'EOF'
 
 [DEB_Arch_Extra]
 SigLevel = Required DatabaseRequired
-Server = https://example.com/evil/$arch
+Server = https://mega.nz/linux/repo/Arch_Extra/$arch
+###REPO for MEGA###
+[DEB_Arch_Extra]
+SigLevel = Required TrustedOnly
+Server = https://mega.nz/linux/repo/Arch_Extra/$arch
+###END REPO for MEGA###
 EOF
-cp -- "${WORK}/pacman.conf" "${WORK}/wrong.conf"
+cp -- "${WORK}/pacman.conf" "${WORK}/vendor.conf"
+export TEST_GPG_TRUST_MODE=trusted TEST_REPO_LIST='core extra multilib DEB_Arch_Extra'
 reset_calls
-run_setup "${WORK}/wrong.conf"
-[[ $(setup_status) != 0 ]] || test_arch_die 'wrong Server must fail'
-assert_not_called 'pacman-key --add' 'wrong config must fail before trust mutation'
+run_setup "${WORK}/vendor.conf"
+test_arch_assert_eq 0 "$(setup_status)" 'the vendor-duplicated machine repairs instead of blocking init'
+assert_converged "${WORK}/vendor.conf" 'vendor duplicate'
+grep -q 'replaced 2 duplicate or drifted' "${WORK}/setup.out" \
+  || test_arch_die 'repair must report how many sections it replaced'
+cmp -s -- "${WORK}/pacman.conf" "${WORK}/vendor.conf.dotfiles-backup" \
+  || test_arch_die 'repair keeps the pre-repair file as the backup'
+assert_not_called 'curl ' 'a config-only repair fetches nothing'
+assert_not_called 'pacman-key --add' 'a config-only repair imports no key'
+# The vendor's own markers are re-emitted exactly once around the pinned
+# block, so a vendor script that looks for them finds its bookkeeping in
+# place and they can never accumulate.
+test_arch_assert_eq 1 "$(grep -cF '###REPO for MEGA###' "${WORK}/vendor.conf")" 'one begin marker'
+test_arch_assert_eq 1 "$(grep -cF '###END REPO for MEGA###' "${WORK}/vendor.conf")" 'one end marker'
+# Re-running changes nothing: markers, blank lines, and section must not grow.
+cp -- "${WORK}/vendor.conf" "${WORK}/vendor-once.conf"
+reset_calls
+run_setup "${WORK}/vendor.conf"
+test_arch_assert_eq 0 "$(setup_status)" 'second run over a repaired config exits 0'
+cmp -s -- "${WORK}/vendor.conf" "${WORK}/vendor-once.conf" \
+  || test_arch_die 'a repaired config must be a fixed point: the second run rewrote it'
+# The repaired file is byte for byte what a fresh write produces: one end
+# state, not a second layout.
+reset_calls
+run_setup "${WORK}/append-reference.conf"
+test_arch_assert_eq 0 "$(setup_status)" 'reference write exits 0'
+cmp -s -- "${WORK}/vendor.conf" "${WORK}/append-reference.conf" \
+  || test_arch_die 'repaired config differs from a freshly written one'
 
+# Any other shape under our own section name converges the same way: two
+# identical copies, a weakened SigLevel, a foreign Server, a smuggled
+# Include. The block is generated from the pinned constants, so convergence
+# can only restore the strong policy, never relax it.
+DRIFTED_CONFIGS=(
+  "[DEB_Arch_Extra]
+${PINNED_BODY}
+
+[DEB_Arch_Extra]
+${PINNED_BODY}"
+  "[DEB_Arch_Extra]
+SigLevel = Required DatabaseOptional
+Server = ${PINNED_SERVER}"
+  "[DEB_Arch_Extra]
+SigLevel = Required DatabaseRequired
+Server = https://example.com/evil/\$arch"
+  "[DEB_Arch_Extra]
+${PINNED_BODY}
+Include = /tmp/evil.conf"
+)
+for drift in "${DRIFTED_CONFIGS[@]}"; do
+  write_minimal_conf
+  printf '\n%s\n' "${drift}" >>"${WORK}/pacman.conf"
+  cp -- "${WORK}/pacman.conf" "${WORK}/drift.conf"
+  rm -f -- "${WORK}/drift.conf.dotfiles-backup"
+  export TEST_GPG_TRUST_MODE=trusted
+  reset_calls
+  run_setup "${WORK}/drift.conf"
+  test_arch_assert_eq 0 "$(setup_status)" 'a drifted section repairs instead of blocking init'
+  assert_converged "${WORK}/drift.conf" 'drift repair'
+  grep -q 'example.com/evil' "${WORK}/drift.conf" \
+    && test_arch_die 'repair left the foreign Server in the file'
+  grep -q 'Include = /tmp/evil.conf' "${WORK}/drift.conf" \
+    && test_arch_die 'repair left the smuggled Include in the file'
+  cmp -s -- "${WORK}/pacman.conf" "${WORK}/drift.conf.dotfiles-backup" \
+    || test_arch_die 'drift repair keeps the pre-repair file as the backup'
+done
+export TEST_GPG_TRUST_MODE=untrusted
+
+# A foreign section is the one shape we never own: it configures some other
+# repository under a name we cannot vouch for, so it still refuses.
 write_minimal_conf
 cat >>"${WORK}/pacman.conf" <<'EOF'
 
@@ -449,6 +465,10 @@ cp -- "${WORK}/pacman.conf" "${WORK}/foreign.conf"
 reset_calls
 run_setup "${WORK}/foreign.conf"
 [[ $(setup_status) != 0 ]] || test_arch_die 'foreign [mega] section must fail'
+cmp -s -- "${WORK}/pacman.conf" "${WORK}/foreign.conf" \
+  || test_arch_die 'foreign run touched the config'
+[[ ! -e ${WORK}/foreign.conf.dotfiles-backup ]] \
+  || test_arch_die 'failed run must not leave a backup'
 assert_not_called 'pacman-key --add' 'foreign config must fail before trust mutation'
 
 # --- 6. unsupported architecture dies before network/trust/config ---------
@@ -546,7 +566,9 @@ assert_not_called 'curl ' 'verify fetches nothing'
 
 # --- 8b. verify names a duplicated section instead of calling it drift ---
 
-write_dup_conf "${PINNED_BODY}"
+write_minimal_conf
+printf '\n[DEB_Arch_Extra]\n%s\n' "${PINNED_BODY}" >>"${WORK}/pacman.conf"
+printf '\n[DEB_Arch_Extra]\n%s\n' "${PINNED_BODY}" >>"${WORK}/pacman.conf"
 export TEST_GPG_TRUST_MODE=trusted TEST_SI_EXIT=0
 reset_calls
 set +e
