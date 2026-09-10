@@ -35,8 +35,7 @@ obsidian-cli, obsidian-markdown. MIT license (Copyright (c) 2026 Steph Ango
 rest.
 
 Caveats: obsidian-cli drives a running Obsidian instance through its CLI
-(https://help.obsidian.md/cli); defuddle needs the `defuddle` CLI
-(`npm install -g defuddle`); knap needs the `knap` CLI (`npm install -g knap`,
-Node.js 20+, or `npx knap`). obsidian-markdown, obsidian-bases, and json-canvas
-are inert markdown. No bundle entry installs those CLIs — add one when the
-workflow is wanted.
+(https://help.obsidian.md/cli); the defuddle and knap skills call their
+same-named npm CLIs, which both bundles now install (`npm "defuddle"`,
+`npm "knap"`; the Arch bundle pairs them with `repo "npm"`). obsidian-markdown,
+obsidian-bases, and json-canvas are inert markdown.

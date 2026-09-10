@@ -5,6 +5,9 @@
 #   aur "name"             AUR, via yay (dot init bootstraps yay)
 #   appimage "Name" "URL"  pinned AppImage into ~/Applications (last resort;
 #                          the AUR usually has a package)
+#   npm "package"          global npm package (--ignore-scripts; for JS-only
+#                          tools with no repo or AUR entry; needs repo "npm")
+#   npm-scripts "package"  global npm package whose postinstall must run
 #
 # repo beats aur. Names are never translated to or from fedora.bundle.
 # Shell toolchain (dot init also makes fish the login shell)
@@ -31,6 +34,13 @@ repo "git" # version control (explicit so the bundle tracks and doctor checks it
 # Herdr Annotate (plannotator/herdr-annotate plugin; document review bundles its own plannotator-tui binary)
 repo "bun" # JavaScript runtime for annotate's capture/manage actions
 repo "wl-clipboard" # clipboard for annotate's copy actions (wl-copy/wl-paste on Wayland)
+
+# Obsidian agent skills (home/.agents/skills/): the CLIs the defuddle and knap
+# skills invoke. Both publish only to npm — the AUR's defuddle is flagged out
+# of date and knap has no AUR entry — so npm is the vendor route.
+repo "npm" # npm for the npm entries below (pulls nodejs)
+npm "defuddle" # clean web-page extraction for the defuddle skill
+npm "knap" # Markdown template renderer for the knap skill
 
 # Applications from the official repositories
 repo "github-cli" # GitHub CLI

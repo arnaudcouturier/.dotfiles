@@ -70,6 +70,10 @@ npm "@earendil-works/pi-coding-agent" # pi coding agent CLI
 npm "@openai/codex" # OpenAI Codex CLI
 npm-scripts "@opencode-ai/cli@beta" # opencode2 (the @opencode/cli scope is an empty placeholder with no beta tag; its postinstall fetches the platform binary, and without it the CLI is a stub that refuses to run)
 npm-scripts "bun" # JavaScript runtime for Herdr Annotate's capture/manage actions (oven-sh's npm build; its postinstall fetches the platform binary)
+# Obsidian agent skills (home/.agents/skills/): the CLIs the defuddle and knap
+# skills invoke; both are npm-only upstream.
+npm "defuddle" # clean web-page extraction for the defuddle skill (--ignore-scripts)
+npm "knap" # Markdown template renderer for the knap skill (--ignore-scripts)
 # Claude Code is installed by dot itself, and herdr on both distros: their
 # vendors' installers are the supported route (npm is deprecated for Claude).
 #

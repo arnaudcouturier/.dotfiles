@@ -43,13 +43,14 @@ if grep -Eq '^aur "equibop"([[:space:]]|#|$)' "${BUNDLE}"; then
   test_arch_die 'stale aur "equibop" must not reappear beside equibop-git'
 fi
 
-# Every bundle line still parses under Arch verbs (repo/aur/appimage only).
+# Every bundle line still parses under Arch verbs (repo/aur/appimage, plus
+# npm/npm-scripts for JS-only tools the repos and AUR do not carry).
 while IFS= read -r line || [[ -n ${line} ]]; do
   bare="${line%%#*}"
   [[ -n ${bare//[[:space:]]/} ]] || continue
   verb="${bare%%[[:space:]]*}"
   case "${verb}" in
-    repo | aur | appimage) ;;
+    repo | aur | appimage | npm | npm-scripts) ;;
     *) test_arch_die "non-Arch verb in arch.bundle: ${line}" ;;
   esac
 done <"${BUNDLE}"

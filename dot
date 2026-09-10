@@ -160,10 +160,12 @@ require_verb_for_distro() {
     *) die "Unknown bundle verb: $1" ;;
   esac
   case "${DISTRO}:$1" in
-    arch:repo | arch:aur | arch:appimage | fedora:repo) return 0 ;;
+    # npm is the vendor route for JS-only tools with no repo or AUR entry;
+    # both bundles may use it. rpm/repofile/copr/flatpak stay Fedora-only.
+    arch:repo | arch:aur | arch:appimage | arch:npm | arch:npm-scripts | fedora:repo) return 0 ;;
     fedora:aur) die "Verb 'aur' is Arch-only. Give packages/fedora.bundle a verified Fedora source instead." ;;
     fedora:*) return 0 ;;
-    *) die "Verb '$1' is Fedora-only. packages/arch.bundle takes repo, aur, or appimage." ;;
+    *) die "Verb '$1' is Fedora-only. packages/arch.bundle takes repo, aur, appimage, npm, or npm-scripts." ;;
   esac
 }
 
