@@ -46,7 +46,8 @@ if status is-interactive
     function mark_prompt_start --on-event fish_prompt
         echo -en '\e]133;A\e\\'
     end
+
+    if type -q mise
+        mise activate fish | source
+    end
 end
-mise activate fish | source
-mise activate fish | source
-/home/arnaudc/.local/bin/mise activate fish | source
