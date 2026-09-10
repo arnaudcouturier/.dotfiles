@@ -40,7 +40,6 @@ repo "fastfetch" # minimalist system info
 repo "gh" # GitHub CLI (Arch name: github-cli)
 repo "neovim" # Neovim editor (the LazyVim starter config lives in home/.config/nvim)
 repo "qbittorrent" # BitTorrent client
-repo "nextcloud-client" # Nextcloud desktop file-sync client
 repo "wl-clipboard" # clipboard for Herdr Annotate's copy actions (wl-copy/wl-paste on Wayland)
 
 # Applications from official vendor repositories

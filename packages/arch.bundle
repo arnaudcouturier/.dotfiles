@@ -37,7 +37,6 @@ repo "github-cli" # GitHub CLI
 repo "obsidian" # Obsidian notes (packaged here; Fedora uses the Flathub build)
 repo "qbittorrent" # BitTorrent client
 repo "mullvad-vpn" # Mullvad VPN client
-repo "nextcloud-client" # Nextcloud desktop file-sync client
 repo "tailscale" # mesh VPN
 repo "openai-codex" # OpenAI Codex CLI
 repo "micro" # micro terminal editor (upstream micro component stays disabled; neovim is the only editor target)
