@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1320" height="400" viewBox="0 0 1320 400" role="img" aria-labelledby="bht-a bht-d">
-<title id="bht-a">.dotfiles — Arch Linux and Fedora configuration</title>
-<desc id="bht-d">Illustration at night: the wordmark beside fanned config cards for home, home-arch and home-fedora, tied by a stow string.</desc>
+<title id="bht-a">.dotfiles — Configuration files and setup scripts</title>
+<desc id="bht-d">Illustration at night: the wordmark beside fanned configuration cards tied by a stow string.</desc>
 <defs>
 <linearGradient id="bDeskD" x1="0" y1="0" x2="0" y2="1">
 <stop offset="0" stop-color="#241C14"/><stop offset="1" stop-color="#14100C"/>
@@ -12,10 +12,8 @@
 <rect x="0" y="0" width="1320" height="400" fill="url(#bDeskD)"/>
 <rect x="0" y="0" width="1320" height="400" fill="url(#bDotsD)"/>
 <!-- left editorial column -->
-<rect x="90" y="78" width="54" height="6" fill="#FB923C"/>
-<text x="156" y="90" font-family="Liberation Mono, Noto Sans Mono, DejaVu Sans Mono, monospace" font-size="20" letter-spacing="3" fill="#C9B69E">ARCH LINUX &#183; FEDORA</text>
 <text x="88" y="206" font-family="Liberation Sans, Noto Sans, DejaVu Sans, sans-serif" font-size="112" font-weight="bold" fill="#FAF6EF"><tspan fill="#FB923C">.</tspan>dotfiles</text>
-<text x="90" y="258" font-family="Liberation Mono, Noto Sans Mono, DejaVu Sans Mono, monospace" font-size="29" fill="#D6CDBD">Arch Linux and Fedora configuration.</text>
+<text x="90" y="258" font-family="Liberation Mono, Noto Sans Mono, DejaVu Sans Mono, monospace" font-size="29" fill="#D6CDBD">Configuration files and setup scripts.</text>
 <rect x="90" y="274" width="209" height="5" fill="#FB923C" opacity="0.85"/>
 <!-- stow ticket -->
 <rect x="94" y="304" width="336" height="62" rx="10" fill="#000000" opacity="0.45"/>
@@ -30,7 +28,7 @@
 <g transform="translate(-8,12) rotate(-16 1015 360)">
 <rect x="900" y="64" width="250" height="296" rx="14" fill="#000000" opacity="0.45"/>
 <rect x="890" y="52" width="250" height="296" rx="14" fill="#2E2822" stroke="#57534E" stroke-width="2"/>
-<rect x="890" y="52" width="250" height="30" rx="14" fill="#FB923C"/><rect x="890" y="68" width="250" height="14" fill="#FB923C"/><text x="898" y="75" font-family="Liberation Mono, Noto Sans Mono, DejaVu Sans Mono, monospace" font-size="15" letter-spacing="2" fill="#431407">ARCH</text>
+<rect x="890" y="52" width="250" height="30" rx="14" fill="#FB923C"/><rect x="890" y="68" width="250" height="14" fill="#FB923C"/>
 <rect x="904" y="96" width="222" height="238" rx="8" fill="none" stroke="#6B6257" stroke-width="1.4" stroke-dasharray="6 5"/>
 
 <rect x="922" y="160" width="150" height="10" rx="5" fill="#57534E"/><rect x="922" y="180" width="186" height="10" rx="5" fill="#57534E"/>
@@ -38,7 +36,7 @@
 <g transform="translate(8,12) rotate(16 1015 360)">
 <rect x="900" y="64" width="250" height="296" rx="14" fill="#000000" opacity="0.45"/>
 <rect x="890" y="52" width="250" height="296" rx="14" fill="#2E2822" stroke="#57534E" stroke-width="2"/>
-<rect x="890" y="52" width="250" height="30" rx="14" fill="#2DD4BF"/><rect x="890" y="68" width="250" height="14" fill="#2DD4BF"/><text x="1136" y="75" text-anchor="end" font-family="Liberation Mono, Noto Sans Mono, DejaVu Sans Mono, monospace" font-size="15" letter-spacing="2" fill="#042F2B">FEDORA</text>
+<rect x="890" y="52" width="250" height="30" rx="14" fill="#2DD4BF"/><rect x="890" y="68" width="250" height="14" fill="#2DD4BF"/>
 <rect x="904" y="96" width="222" height="238" rx="8" fill="none" stroke="#6B6257" stroke-width="1.4" stroke-dasharray="6 5"/>
 
 <rect x="922" y="160" width="150" height="10" rx="5" fill="#57534E"/><rect x="922" y="180" width="170" height="10" rx="5" fill="#57534E"/>

@@ -1,12 +1,11 @@
 <h1 align="center">
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/img/dotfiles-hero-dark.svg">
-  <img alt=".dotfiles — Arch Linux and Fedora configuration: fanned home, home-arch, and home-fedora cards tied by a stow string" src="docs/img/dotfiles-hero-light.svg" width="760">
+  <img alt=".dotfiles — Configuration files and setup scripts: fanned configuration cards tied by a stow string" src="docs/img/dotfiles-hero-light.svg" width="760">
 </picture>
 </h1>
 
-Dotfiles for Arch Linux and Fedora, linked with GNU Stow.
-Arch installs the full workstation; Fedora uses the existing desktop.
+Dotfiles managed with GNU Stow.
 
 <p align="center">
 <a href="#setup">Setup</a> · <a href="#commands">Commands</a> · <a href="#arch-system">Arch system</a> · <a href="#configuration">Configuration</a>
@@ -71,8 +70,8 @@ in order. `--only` filters steps, never the bundle install or stow.
 > [!NOTE]
 > `arch-setup` refuses to replace an existing display manager unless
 > `--replace-display-manager` is provided. Existing Limine entries are
-> preserved. Reference:
-> [`docs/usage.md`](docs/usage.md).
+> preserved. Details:
+> [`docs/usage.md`](docs/usage.md), [`docs/arch-coverage.md`](docs/arch-coverage.md).
 
 ## Configuration
 
@@ -91,11 +90,6 @@ On Arch, `~/.config/hypr/` is generated output; edit the sources above.
 
 Packages: [`arch`](packages/arch.bundle) · [`fedora`](packages/fedora.bundle) —
 one commented line per entry. Verbs and policy: [`docs/usage.md`](docs/usage.md).
-
-## Read more
-
-- [`docs/usage.md`](docs/usage.md) — commands, package policy, and Arch reference
-- [`docs/arch-coverage.md`](docs/arch-coverage.md) — provisioned subsystems and sources
 
 ---
 *Inspired by [Dillon Mulroy's dotfiles](https://github.com/dmmulroy/.dotfiles), linked with [GNU Stow](https://www.gnu.org/software/stow/).*
