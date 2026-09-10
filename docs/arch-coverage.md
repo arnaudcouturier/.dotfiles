@@ -88,25 +88,28 @@ other editors.
   `arch-check` verifies read-only against the strong end state — exact
   section + pinned server, vendor key trusted (not merely present), and
   both packages visible — while `doctor` stays unchanged.
-  The vendor's own `megasync` package writes a second `[DEB_Arch_Extra]`
-  block into `/etc/pacman.conf` — wrapped in `###REPO for MEGA###` markers,
-  with the weaker `SigLevel = Required TrustedOnly` — so a machine ends up
-  duplicated by an install nobody drove by hand. That is pacman-fatal, not
-  mere drift: pacman registers one database per repository name and refuses
-  a second registration, which yay surfaces as `Database should be null:
-  failed to register sync database`, breaking every transaction on the
-  machine. So the section has exactly one writer and every starting state
-  converges on it: `init`/`arch-setup` strip every `[DEB_Arch_Extra]` copy
-  (and the vendor markers) and write the pinned block last, re-emitting the
-  markers around it so a vendor script that looks for them does not append
-  another copy. Convergence can only strengthen the file — the block is
-  generated from the pinned constants — and the pre-repair config is kept
-  once at `/etc/pacman.conf.dotfiles-backup`. A repaired config is a fixed
-  point: re-running changes nothing. Trust work is skipped entirely when the
-  keyring is already good, so a config-only repair needs no network. What
-  still refuses is a foreign `[mega]`/`[megasync]` section (a repository we
-  do not own) and every key failure. `arch-check` reports duplication with
-  its own count-and-lines diagnostic.
+  The vendor's own `megasync` package rewrites `/etc/pacman.conf` from its
+  `post_install`: it drops any block wrapped in its `###REPO for MEGA###`
+  markers (including ours) and appends its own, with the weaker
+  `SigLevel = Required TrustedOnly`. A single install therefore cannot keep
+  the pinned block by writing it before the transaction alone. So the
+  section has exactly one writer and every starting state converges on it:
+  `init`/`arch-setup` strip every `[DEB_Arch_Extra]` copy (and the vendor
+  markers) and write the pinned block last, re-emitting the markers around
+  it, both before the repo transaction (so pacman can resolve the packages)
+  and again after it (undoing the vendor's replacement). Should two copies
+  accumulate, they are collected the same way; a duplicate is pacman-fatal,
+  not mere drift — pacman registers one database per repository name and
+  refuses a second registration, which yay surfaces as `Database should be
+  null: failed to register sync database`, breaking every transaction.
+  Convergence can only strengthen the file — the block is generated from the
+  pinned constants — and the pre-repair config is kept once at
+  `/etc/pacman.conf.dotfiles-backup`. A repaired config is a fixed point:
+  re-running changes nothing. Trust work is skipped when the keyring is
+  already good and the post-transaction pass is config-only, so neither
+  needs the network. What still refuses is a foreign `[mega]`/`[megasync]`
+  section (a repository we do not own) and every key failure. `arch-check`
+  reports duplication with its own count-and-lines diagnostic.
   Primary sources: `https://mega.io/desktop` (download URLs),
   `https://mega.nz/linux/repo/Arch_Extra/x86_64/` (directory + DB).
   Nothing MEGA is claimed on Fedora: no bundle lines, no repo, no key.

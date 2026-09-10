@@ -148,6 +148,12 @@ gate_i = fn.index('bundle_requests_mega_repo')
 setup_i = fn.index('ensure_mega_vendor_repo')
 syu_i = fn.index('pacman -Syu --needed --noconfirm')
 assert parse_i < gate_i < setup_i < syu_i, (parse_i, gate_i, setup_i, syu_i)
+# The vendor's megasync post_install rewrites [DEB_Arch_Extra] during the
+# transaction, so the setup must also run AFTER it: one convergence before
+# (so pacman can resolve the packages) and one after (repairing the
+# vendor's weaker replacement) leave a single init run converged.
+reassert_i = fn.rindex('ensure_mega_vendor_repo')
+assert syu_i < reassert_i, (syu_i, reassert_i)
 PYEOF
 grep -Fq 'if bundle_requests_mega_repo; then' "${dot_src}" \
   || test_arch_die 'install_packages must gate repo setup on parsed demand'

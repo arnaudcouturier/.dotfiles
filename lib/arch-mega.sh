@@ -56,12 +56,15 @@ readonly ARCH_MEGA_KEY_URL='https://mega.nz/linux/repo/Arch_Extra/x86_64/DEB_Arc
 # (thunar-megasync DEPENDS megasync>=5.3.0).
 readonly ARCH_MEGA_PACKAGES=(megasync thunar-megasync)
 # The comment markers MEGA's own package writes around the section it adds to
-# pacman.conf (observed verbatim on a provisioned machine, 2026-09-10). The
-# vendor installs its own [DEB_Arch_Extra] block with the weaker
-# 'SigLevel = Required TrustedOnly', which is how a machine ends up with two
-# sections. We re-emit the markers around our pinned block so a vendor script
-# that looks for them finds its own bookkeeping in place instead of appending
-# a second copy; they are comments, so they change nothing for pacman.
+# pacman.conf (observed verbatim on a provisioned machine, 2026-09-10). Its
+# post_install removes any block wrapped in these markers and appends its own
+# [DEB_Arch_Extra] with the weaker 'SigLevel = Required TrustedOnly', so it
+# replaces our pinned block rather than stacking a second one; dot re-asserts
+# the pinned section after the repo transaction for exactly that reason. We
+# re-emit the markers around the pinned block to keep the vendor bookkeeping
+# shape recognizable, and the writer below still collapses any state that
+# does accumulate two copies; the markers are comments, so they change
+# nothing for pacman.
 readonly ARCH_MEGA_VENDOR_MARKER_BEGIN='###REPO for MEGA###'
 readonly ARCH_MEGA_VENDOR_MARKER_END='###END REPO for MEGA###'
 
@@ -352,11 +355,12 @@ arch_mega_trust_vendor_key() {
 # re-run: a converged machine changes nothing and fetches nothing, and every
 # other state — missing, duplicated, or drifted — converges on the pinned
 # section rather than stopping for a hand edit. That matters because the
-# vendor's own megasync package adds a second [DEB_Arch_Extra] block with a
-# weaker SigLevel, so a machine gets duplicated by an install nobody drove by
-# hand. Trust still fails loud: a wrong key, or a foreign [mega] section we
-# do not own, dies before any mutation, and the section written can only be
-# the pinned one, never a relaxed signature policy. The optional path is a
+# vendor's own megasync package rewrites the section from its post_install
+# with a weaker SigLevel, so a machine gets drifted (or, if two copies ever
+# accumulate, duplicated) by an install nobody drove by hand. Trust still
+# fails loud: a wrong key, or a foreign [mega] section we do not own, dies
+# before any mutation, and the section written can only be the pinned one,
+# never a relaxed signature policy. The optional path is a
 # test seam (tests exercise edits on temp files); production always uses the
 # default. Call only after require_arch_system and begin_elevation.
 arch_mega_setup_vendor_repo() {

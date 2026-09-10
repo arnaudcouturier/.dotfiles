@@ -437,7 +437,9 @@ install_packages() {
   # requests a vendor package. init, update, and arch-setup all batch
   # through here, so one conditional covers every bundle install. Runs
   # under the caller's elevation; Arch-gated inside the ensure.
+  local mega_requested=false
   if bundle_requests_mega_repo; then
+    mega_requested=true
     ensure_mega_vendor_repo
   fi
   local entry verb name url
@@ -463,6 +465,16 @@ install_packages() {
       arch) sudo pacman -Syu --needed --noconfirm "${repo_pkgs[@]}" ;;
       fedora) sudo dnf install -y "${repo_pkgs[@]}" ;;
     esac
+  fi
+  # The vendor's own megasync package rewrites [DEB_Arch_Extra] from its
+  # post_install as soon as it lands: it drops the pinned block written
+  # above and appends its own weaker 'SigLevel = Required TrustedOnly'.
+  # Re-assert the pinned section after the repo transaction so a single
+  # init/update/arch-setup leaves the converged state arch-check expects;
+  # the key is already trusted, so this is a config-only repair (no
+  # network) that is a no-op once the section is pinned.
+  if [[ ${mega_requested} == true ]]; then
+    ensure_mega_vendor_repo
   fi
   if ((${#aur_pkgs[@]} > 0)); then
     require_command yay
