@@ -68,28 +68,40 @@ arch_mega_config_section_count() {
   grep -cE '^\[DEB_Arch_Extra\][[:space:]]*$' -- "${config}" 2>/dev/null || true
 }
 
-# Print the body lines of the single [DEB_Arch_Extra] section (header and the
-# next section header excluded). Empty when the section is absent.
-arch_mega_config_section_body() {
+# Print the line numbers of every [DEB_Arch_Extra] header, space separated.
+# Diagnostics only: a message that names the lines turns a hand edit into a
+# one-liner instead of a hunt.
+arch_mega_config_section_lines() {
   local config=${1:-/etc/pacman.conf}
-  awk -v section='[DEB_Arch_Extra]' '
-    /^\[/ { in_section = ($0 == section); next }
-    in_section { print }
+  grep -nE '^\[DEB_Arch_Extra\][[:space:]]*$' -- "${config}" 2>/dev/null | cut -d: -f1 | tr '\n' ' ' | sed 's/ $//'
+}
+
+# Print the body lines of the [DEB_Arch_Extra] section (header and the next
+# section header excluded). The optional 1-based index selects one
+# occurrence, for inspecting a duplicated config copy by copy; the default
+# (0) prints every occurrence, which is one section on a converged config.
+# Empty when the section is absent.
+arch_mega_config_section_body() {
+  local config=${1:-/etc/pacman.conf} index=${2:-0}
+  awk -v section='[DEB_Arch_Extra]' -v want="${index}" '
+    /^\[/ {
+      in_section = ($0 == section)
+      if (in_section) seen++
+      next
+    }
+    in_section && (want == 0 || want == seen) { print }
   ' "${config}" 2>/dev/null
 }
 
-# True when the MEGA vendor repository is configured exactly: one section
-# whose EFFECTIVE directives are precisely one pinned Server line and one
-# SigLevel line requiring both package and database signatures — nothing
-# else. Comments are stripped first (a comment containing 'Never' must not
-# falsely reject a healthy config), then every remaining line must match:
-# an Include smuggling another config file, a duplicate evil Server beside
-# the good one, a duplicate SigLevel, or any unknown directive all fail.
-arch_mega_vendor_repo_configured() {
-  local config=${1:-/etc/pacman.conf} body stripped server_count siglevel_count total
-  [[ -r ${config} ]] || return 1
-  [[ $(arch_mega_config_section_count "${config}") == 1 ]] || return 1
-  body="$(arch_mega_config_section_body "${config}")"
+# True when one section body carries EXACTLY the pinned directives: one
+# pinned Server line and one SigLevel line requiring both package and
+# database signatures — nothing else. Comments are stripped first (a comment
+# containing 'Never' must not falsely reject a healthy config), then every
+# remaining line must match: an Include smuggling another config file, a
+# duplicate evil Server beside the good one, a duplicate SigLevel, or any
+# unknown directive all fail.
+arch_mega_section_is_pinned() {
+  local body=$1 stripped server_count siglevel_count total
   stripped="$(sed -e 's/#.*//' -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' <<<"${body}" | grep -v '^$' || true)"
   [[ -n ${stripped} ]] || return 1
   server_count="$(grep -cE '^Server[[:space:]]*=[[:space:]]*https://mega\.nz/linux/repo/Arch_Extra/\$arch$' <<<"${stripped}" || true)"
@@ -97,6 +109,33 @@ arch_mega_vendor_repo_configured() {
   total="$(grep -c . <<<"${stripped}" || true)"
   [[ ${server_count} == 1 && ${siglevel_count} == 1 && ${total} == 2 ]] || return 1
   return 0
+}
+
+# True when the MEGA vendor repository is configured exactly: one section,
+# pinned. Duplicated sections are never "configured" — pacman refuses to
+# register the same database twice — so this stays the strict end-state
+# check that verify reports and setup converges on.
+arch_mega_vendor_repo_configured() {
+  local config=${1:-/etc/pacman.conf}
+  [[ -r ${config} ]] || return 1
+  [[ $(arch_mega_config_section_count "${config}") == 1 ]] || return 1
+  arch_mega_section_is_pinned "$(arch_mega_config_section_body "${config}")"
+}
+
+# Print ${config} with every [DEB_Arch_Extra] section after the first
+# removed. Blank lines are held back and flushed by the next kept line, so a
+# duplicate that was appended with its own leading blank line takes that
+# line with it; every other byte of the file survives verbatim.
+arch_mega_config_without_duplicate_sections() {
+  local config=$1
+  awk -v section='[DEB_Arch_Extra]' '
+    /^[[:space:]]*$/ { blanks = blanks $0 "\n"; next }
+    /^\[/ {
+      if ($0 == section) { seen++; drop = (seen > 1) } else { drop = 0 }
+    }
+    { if (!drop) { printf "%s", blanks; print }; blanks = "" }
+    END { printf "%s", blanks }
+  ' "${config}"
 }
 
 # Classify one --with-colons key listing already scoped to the pinned
@@ -140,6 +179,71 @@ arch_mega_key_trusted() {
   return 0
 }
 
+# Abort a staged config write: restore the caller's CLEANUP_PATH, drop the
+# staging file, and die. The live config is never touched on this path.
+arch_mega_abort_staged() {
+  local staged=$1 prev_cleanup=$2
+  shift 2
+  CLEANUP_PATH="${prev_cleanup}"
+  rm -f -- "${staged}"
+  die "$@"
+}
+
+# Validate a staged pacman.conf, then install it over ${config}: parse it
+# with pacman-conf on the live config (the test seam revalidates the pinned
+# section instead), keep one restorable backup of the first edit, and
+# install 0644. The live config is only ever replaced by a file that already
+# validated, so a rejected staging file leaves the machine untouched. Both
+# writers below — the append and the duplicate collapse — go through here so
+# neither can grow its own weaker path.
+arch_mega_deploy_staged_config() {
+  local config=$1 staged=$2 live=$3 prev_cleanup=$4 backup
+  if [[ ${live} == true ]]; then
+    sudo pacman-conf --config "${staged}" >/dev/null \
+      || arch_mega_abort_staged "${staged}" "${prev_cleanup}" "arch-mega: the staged ${config} is not parseable; live config untouched."
+    sudo pacman-conf --config "${staged}" --repo-list 2>/dev/null | grep -Fxq "${ARCH_MEGA_REPO_SECTION}" \
+      || arch_mega_abort_staged "${staged}" "${prev_cleanup}" "arch-mega: the staged config does not expose [${ARCH_MEGA_REPO_SECTION}]; live config untouched."
+  else
+    arch_mega_vendor_repo_configured "${staged}" \
+      || arch_mega_abort_staged "${staged}" "${prev_cleanup}" 'arch-mega: the staged config fails revalidation; original untouched.'
+  fi
+  backup="${config}.dotfiles-backup"
+  if [[ ! -e ${backup} ]]; then
+    sudo cp --archive -- "${config}" "${backup}" \
+      || arch_mega_abort_staged "${staged}" "${prev_cleanup}" "arch-mega: cannot back up ${config}."
+  fi
+  sudo install --mode=0644 -- "${staged}" "${config}" \
+    || arch_mega_abort_staged "${staged}" "${prev_cleanup}" "arch-mega: cannot deploy ${config}; restore ${backup}."
+  rm -f -- "${staged}"
+  CLEANUP_PATH="${prev_cleanup}"
+}
+
+# Collapse a config that holds several [DEB_Arch_Extra] sections down to the
+# first one. pacman registers one database per repository name and refuses a
+# second registration of the same name ("failed to register sync database",
+# which yay surfaces as "Database should be null"), so a duplicated section
+# breaks every pacman transaction on the machine — and `init` is the
+# supported repair path, so repair it here rather than hand the user a
+# manual edit. Only copies that all carry exactly the pinned directives
+# collapse: the surviving file is byte for byte what a fresh append would
+# have produced. A copy that drifts dies instead, naming the header lines,
+# because choosing which repository definition survives is a human decision.
+arch_mega_collapse_duplicate_sections() {
+  local config=$1 count=$2 live=$3
+  local prev_cleanup="${CLEANUP_PATH:-}" index staged
+  for ((index = 1; index <= count; index++)); do
+    arch_mega_section_is_pinned "$(arch_mega_config_section_body "${config}" "${index}")" && continue
+    die "arch-mega: ${count} [DEB_Arch_Extra] sections in ${config} (lines $(arch_mega_config_section_lines "${config}")) and they do not all carry the pinned Server/SigLevel; delete the copies you do not want by hand, keeping one."
+  done
+  staged="$(mktemp "${TMPDIR:-/tmp}/arch-mega-pacman.XXXXXX")" \
+    || die 'arch-mega: cannot stage the pacman config.'
+  CLEANUP_PATH="${staged}"
+  arch_mega_config_without_duplicate_sections "${config}" >"${staged}" \
+    || arch_mega_abort_staged "${staged}" "${prev_cleanup}" "arch-mega: cannot read ${config}."
+  arch_mega_deploy_staged_config "${config}" "${staged}" "${live}" "${prev_cleanup}"
+  log_ok "arch-mega: collapsed ${count} duplicate [DEB_Arch_Extra] sections in ${config} into one."
+}
+
 # Set up the MEGA vendor repository: verify architecture, classify the
 # existing config, ensure the pinned key is added and locally signed, then
 # append the repository after the official ones and revalidate. Safe to
@@ -176,8 +280,14 @@ arch_mega_setup_vendor_repo() {
   if grep -qiE '^\[(mega|megasync)\][[:space:]]*$' -- "${config}"; then
     die "arch-mega: a foreign [mega]/[megasync] section exists in ${config}; remove it by hand so only [DEB_Arch_Extra] configures the vendor repo."
   fi
+  # Duplicates converge instead of blocking: identical copies collapse to
+  # one (and the count below then reads as a configured machine), while
+  # copies that disagree still die inside the collapse.
   if ((count > 1)); then
-    die "arch-mega: ${count} [DEB_Arch_Extra] sections in ${config}; remove the duplicates by hand, keeping one."
+    arch_mega_collapse_duplicate_sections "${config}" "${count}" "${live}"
+    count="$(arch_mega_config_section_count "${config}")"
+    ((count == 1)) \
+      || die "arch-mega: ${count} [DEB_Arch_Extra] sections remain in ${config} after collapsing the duplicates; check the file."
   fi
   local needs_config=false
   if ((count == 1)); then
@@ -275,32 +385,15 @@ arch_mega_setup_vendor_repo() {
   # shadowing official packages. Stage the complete file first and parse it
   # before replacing, so a validation failure leaves the live config intact.
   if [[ ${needs_config} == true ]]; then
-    local staged backup
+    local staged
     staged="$(mktemp "${TMPDIR:-/tmp}/arch-mega-pacman.XXXXXX")" \
       || die 'arch-mega: cannot stage the pacman config.'
     CLEANUP_PATH="${staged}"
     cat -- "${config}" >"${staged}" \
-      || { CLEANUP_PATH="${prev_cleanup}"; rm -f -- "${staged}"; die "arch-mega: cannot read ${config}."; }
+      || arch_mega_abort_staged "${staged}" "${prev_cleanup}" "arch-mega: cannot read ${config}."
     printf '\n[%s]\nSigLevel = Required DatabaseRequired\nServer = %s\n' \
       "${ARCH_MEGA_REPO_SECTION}" "${ARCH_MEGA_REPO_SERVER}" >>"${staged}"
-    if [[ ${live} == true ]]; then
-      sudo pacman-conf --config "${staged}" >/dev/null \
-        || { CLEANUP_PATH="${prev_cleanup}"; rm -f -- "${staged}"; die "arch-mega: the staged ${config} is not parseable; live config untouched."; }
-      sudo pacman-conf --config "${staged}" --repo-list 2>/dev/null | grep -Fxq "${ARCH_MEGA_REPO_SECTION}" \
-        || { CLEANUP_PATH="${prev_cleanup}"; rm -f -- "${staged}"; die "arch-mega: the staged config does not expose [${ARCH_MEGA_REPO_SECTION}]; live config untouched."; }
-    else
-      arch_mega_vendor_repo_configured "${staged}" \
-        || { CLEANUP_PATH="${prev_cleanup}"; rm -f -- "${staged}"; die 'arch-mega: the staged config fails revalidation; original untouched.'; }
-    fi
-    backup="${config}.dotfiles-backup"
-    if [[ ! -e ${backup} ]]; then
-      sudo cp --archive -- "${config}" "${backup}" \
-        || { CLEANUP_PATH="${prev_cleanup}"; rm -f -- "${staged}"; die "arch-mega: cannot back up ${config}."; }
-    fi
-    sudo install --mode=0644 -- "${staged}" "${config}" \
-      || { CLEANUP_PATH="${prev_cleanup}"; rm -f -- "${staged}"; die "arch-mega: cannot deploy ${config}; restore ${backup}."; }
-    rm -f -- "${staged}"
-    CLEANUP_PATH="${prev_cleanup}"
+    arch_mega_deploy_staged_config "${config}" "${staged}" "${live}" "${prev_cleanup}"
     log_ok 'arch-mega: MEGA vendor repository configured (Thunar file manager integration source).'
   else
     log_ok 'arch-mega: vendor key trust repaired.'
@@ -324,8 +417,18 @@ arch_mega_setup_vendor_repo() {
 arch_mega_verify_vendor_repo() {
   local failed=0
   local config=${1:-/etc/pacman.conf}
-  arch_mega_vendor_repo_configured "${config}" \
-    || { log_error "arch-mega: MEGA vendor repository missing or drifted in ${config}. Run ./dot arch-setup."; failed=1; }
+  # Duplicated sections get their own diagnostic: they are not drift but a
+  # pacman-fatal config (the same database registered twice), and arch-setup
+  # collapses identical copies, so the report must name what it sees.
+  local sections
+  sections="$(arch_mega_config_section_count "${config}")"
+  if ((sections > 1)); then
+    log_error "arch-mega: ${sections} [DEB_Arch_Extra] sections in ${config} (lines $(arch_mega_config_section_lines "${config}")); pacman cannot register one database twice. Run ./dot arch-setup."
+    failed=1
+  else
+    arch_mega_vendor_repo_configured "${config}" \
+      || { log_error "arch-mega: MEGA vendor repository missing or drifted in ${config}. Run ./dot arch-setup."; failed=1; }
+  fi
   pacman-conf --repo-list 2>/dev/null | grep -Fxq "${ARCH_MEGA_REPO_SECTION}" \
     || { log_error 'arch-mega: pacman does not list [DEB_Arch_Extra]; the sync database was never fetched. Run ./dot arch-setup.'; failed=1; }
   # Presence is not trust: reuse the genuine validity probe read-only. Every

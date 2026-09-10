@@ -343,25 +343,74 @@ for mode in revoked expired; do
 done
 export TEST_GPG_SHOW_MODE=good
 
-# --- 5. duplicate / wrong / foreign sections fail before trust mutation ---
+# --- 5. duplicates repair; wrong / foreign sections still fail -----------
 
+PINNED_SERVER='https://mega.nz/linux/repo/Arch_Extra/$arch'
+PINNED_BODY="SigLevel = Required DatabaseRequired
+Server = ${PINNED_SERVER}"
+
+# One pinned section plus a second section carrying the given body.
+write_dup_conf() {
+  write_minimal_conf
+  printf '\n[DEB_Arch_Extra]\n%s\n' "${PINNED_BODY}" >>"${WORK}/pacman.conf"
+  printf '\n[DEB_Arch_Extra]\n%s\n' "$1" >>"${WORK}/pacman.conf"
+}
+
+# pacman registers one database per repository name and refuses a second
+# registration of the same name, so a duplicated section breaks every
+# transaction on the machine (yay reports it as "Database should be null").
+# init is the supported repair path: identical copies collapse to one.
 write_minimal_conf
-cat >>"${WORK}/pacman.conf" <<'EOF'
-
-[DEB_Arch_Extra]
-SigLevel = Required DatabaseRequired
-Server = https://mega.nz/linux/repo/Arch_Extra/$arch
-
-[DEB_Arch_Extra]
-SigLevel = Required DatabaseRequired
-Server = https://mega.nz/linux/repo/Arch_Extra/$arch
-EOF
+cp -- "${WORK}/pacman.conf" "${WORK}/append-reference.conf"
+write_dup_conf "${PINNED_BODY}"
 cp -- "${WORK}/pacman.conf" "${WORK}/dup.conf"
-export TEST_GPG_TRUST_MODE=untrusted
+export TEST_GPG_TRUST_MODE=trusted TEST_REPO_LIST='core extra multilib DEB_Arch_Extra'
 reset_calls
 run_setup "${WORK}/dup.conf"
-[[ $(setup_status) != 0 ]] || test_arch_die 'duplicate sections must fail'
-assert_not_called 'pacman-key --add' 'duplicate config must fail before trust mutation'
+test_arch_assert_eq 0 "$(setup_status)" 'identical duplicate sections repair instead of blocking init'
+test_arch_assert_eq 1 "$(grep -cE '^\[DEB_Arch_Extra\][[:space:]]*$' "${WORK}/dup.conf")" 'collapse leaves exactly one section'
+grep -q 'collapsed 2 duplicate' "${WORK}/setup.out" \
+  || test_arch_die 'collapse must report what it repaired'
+assert_not_called 'curl ' 'a config-only repair fetches nothing'
+assert_not_called 'pacman-key --add' 'a config-only repair imports no key'
+cmp -s -- "${WORK}/pacman.conf" "${WORK}/dup.conf.dotfiles-backup" \
+  || test_arch_die 'collapse keeps the duplicated original as the backup'
+# The survivor is byte for byte what a fresh append produces: the repair
+# converges on one end state, it does not invent a second layout.
+reset_calls
+run_setup "${WORK}/append-reference.conf"
+test_arch_assert_eq 0 "$(setup_status)" 'reference append exits 0'
+cmp -s -- "${WORK}/dup.conf" "${WORK}/append-reference.conf" \
+  || test_arch_die 'collapsed config differs from a freshly appended one'
+
+# Copies that disagree are a human decision, never ours to pick: they die
+# before any trust or config mutation, naming the header lines.
+DRIFTED_BODIES=(
+  "${PINNED_BODY}
+Include = /tmp/evil.conf"
+  "SigLevel = Required DatabaseOptional
+Server = ${PINNED_SERVER}"
+  "SigLevel = Required DatabaseRequired
+Server = https://example.com/evil/\$arch"
+)
+for drift in "${DRIFTED_BODIES[@]}"; do
+  write_dup_conf "${drift}"
+  cp -- "${WORK}/pacman.conf" "${WORK}/dupdrift.conf"
+  export TEST_GPG_TRUST_MODE=untrusted
+  reset_calls
+  run_setup "${WORK}/dupdrift.conf"
+  [[ $(setup_status) != 0 ]] || test_arch_die "duplicate copy carrying <${drift}> must fail, never collapse"
+  grep -q 'do not all carry the pinned Server/SigLevel' "${WORK}/setup.out" \
+    || test_arch_die "drifted duplicate <${drift}> lacks the arch-mega: drift message"
+  grep -qE 'lines [0-9]+ [0-9]+' "${WORK}/setup.out" \
+    || test_arch_die 'drift message must name the section lines so the hand edit is a one-liner'
+  cmp -s -- "${WORK}/pacman.conf" "${WORK}/dupdrift.conf" \
+    || test_arch_die "drifted duplicate <${drift}> run touched the config"
+  [[ ! -e ${WORK}/dupdrift.conf.dotfiles-backup ]] \
+    || test_arch_die 'failed collapse must not leave a backup'
+  assert_not_called 'pacman-key --add' 'disagreeing duplicates must fail before trust mutation'
+done
+export TEST_GPG_TRUST_MODE=untrusted
 
 write_minimal_conf
 cat >>"${WORK}/pacman.conf" <<'EOF'
@@ -494,6 +543,26 @@ grep -q -- '--no-auto-check-trustdb' "$(test_arch_calls_log)" \
   || test_arch_die 'verify trust listing must carry --no-auto-check-trustdb'
 assert_not_called 'pacman-key --updatedb' 'verify updates no database'
 assert_not_called 'curl ' 'verify fetches nothing'
+
+# --- 8b. verify names a duplicated section instead of calling it drift ---
+
+write_dup_conf "${PINNED_BODY}"
+export TEST_GPG_TRUST_MODE=trusted TEST_SI_EXIT=0
+reset_calls
+set +e
+arch_mega_verify_vendor_repo "${WORK}/pacman.conf" >"${WORK}/verify.out" 2>&1
+verify_status=$?
+set -e
+((verify_status != 0)) || test_arch_die 'verify must fail on duplicated sections'
+grep -q '2 \[DEB_Arch_Extra\] sections' "${WORK}/verify.out" \
+  || test_arch_die 'duplicate diagnostic must count the sections, not report generic drift'
+grep -q 'Run ./dot arch-setup' "${WORK}/verify.out" \
+  || test_arch_die 'duplicate diagnostic must name the repair'
+assert_not_called 'pacman-key --add' 'verify repairs nothing'
+assert_not_called 'curl ' 'duplicate verify fetches nothing'
+# Leave a converged fixture behind for the key cases below.
+write_minimal_conf
+printf '\n[DEB_Arch_Extra]\n%s\n' "${PINNED_BODY}" >>"${WORK}/pacman.conf"
 
 # --- 9. verify reports a missing key distinctly ---
 

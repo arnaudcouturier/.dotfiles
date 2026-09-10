@@ -86,6 +86,17 @@ other editors.
   `arch-check` verifies read-only against the strong end state — exact
   section + pinned server, vendor key trusted (not merely present), and
   both packages visible — while `doctor` stays unchanged.
+  Duplicated `[DEB_Arch_Extra]` sections are pacman-fatal rather than mere
+  drift (pacman registers one database per repository name and refuses a
+  second registration, which yay surfaces as `Database should be null:
+  failed to register sync database`, breaking every transaction on the
+  machine). `init`/`arch-setup` therefore repair them: copies that all carry
+  the pinned Server/SigLevel collapse back to one — same staged write, same
+  single backup, and the survivor is byte for byte what a fresh append
+  produces — while copies that disagree still die, naming the header lines
+  so the hand edit is a one-liner, because choosing which repository
+  definition survives is a human decision. `arch-check` reports the
+  duplication with its own count-and-lines diagnostic.
   Primary sources: `https://mega.io/desktop` (download URLs),
   `https://mega.nz/linux/repo/Arch_Extra/x86_64/` (directory + DB).
   Nothing MEGA is claimed on Fedora: no bundle lines, no repo, no key.
