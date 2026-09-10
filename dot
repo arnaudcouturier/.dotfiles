@@ -1,13 +1,19 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# dot — the only script in this repo. Arch Linux and Fedora, opinionated,
-# idempotent. `./dot help` lists the commands; README.md explains the layout
-# and packages/<distro>.bundle holds the package list.
+# dot — the CLI entry point. Arch Linux and Fedora, opinionated, idempotent.
+# `./dot help` lists the commands; README.md explains the layout,
+# packages/<distro>.bundle holds the package list, and lib/arch-*.sh holds
+# Arch system provisioning (sourced lazily, Arch commands only).
 
 DOTFILES_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 readonly DOTFILES_DIR
 readonly HOME_DIR="${DOTFILES_DIR}/home"
+# Arch-only paths. home-arch/ and lib/arch-desktop.sh belong to the
+# arch-design agent; dot references them but never creates them.
+readonly ARCH_HOME_OVERLAY_DIR="${DOTFILES_DIR}/home-arch"
+readonly ARCH_DESKTOP_MODULE="${DOTFILES_DIR}/lib/arch-desktop.sh"
+readonly ARCH_LIB_DIR="${DOTFILES_DIR}/lib"
 readonly APPIMAGE_DIR="${HOME}/Applications"
 readonly DESKTOP_DIR="${HOME}/.local/share/applications"
 
@@ -44,6 +50,14 @@ dot — install packages and link dotfiles on Arch and Fedora.
                              [--appimage|--npm|--npm-scripts]
   ./dot package remove NAME
   ./dot benchmark-shell [-r RUNS]   time fish startup
+  ./dot arch-setup [--only step,...] [--replace-display-manager]
+                             provision this Arch machine (Arch-only, idempotent repair)
+  ./dot arch-check [--only step,...]
+                             verify Arch provisioning without changing anything
+
+Arch steps for --only: system gpu snapshots desktop greeter video limine.
+On Arch, ./dot init links user files (shared plus overlay); ./dot arch-setup
+provisions the system afterwards. Fedora has no arch commands.
 
 The distro picks the bundle: packages/arch.bundle or packages/fedora.bundle.
 Flags name the bundle verb; without one an entry is a repository package.
@@ -394,7 +408,7 @@ ensure_helpers() {
         require_command yay
         log_ok 'yay installed.'
       fi
-      command -v stow >/dev/null 2>&1 || sudo pacman -S --needed --noconfirm stow
+      command -v stow >/dev/null 2>&1 || sudo pacman -Syu --needed --noconfirm stow
       ;;
     fedora)
       require_command dnf
@@ -542,6 +556,30 @@ home_files() {
     -o \( -type f -o -type l \) -print0 | sort -z
 }
 
+# Shared paths the Arch overlay deliberately supersedes. On Arch only,
+# shared stow ignores these and home-arch/ provides them instead: ghostty
+# carries the Caelestia palette while shared Ghostty follows DMS, and
+# hypr/input.lua is excluded because Caelestia generates the Hyprland tree
+# (the equivalent keyboard option lives in the Arch user override).
+# Shared files on disk are never modified; Fedora stow ignores nothing extra.
+ARCH_SUPERSEDED_SHARED_PATHS=(
+  .config/ghostty/config
+  .config/hypr/input.lua
+)
+
+# True when a shared-home relpath is Arch-superseded. Fedora never
+# supersedes, so shared stow there stays exactly as before.
+arch_path_is_superseded() {
+  # Self-gated on distro (unset-safe): Fedora invariance must hold no
+  # matter which caller reaches this helper.
+  [[ ${DISTRO:-} == arch ]] || return 1
+  local path=$1 candidate
+  for candidate in ${ARCH_SUPERSEDED_SHARED_PATHS[@]+"${ARCH_SUPERSEDED_SHARED_PATHS[@]}"}; do
+    [[ ${path} == "${candidate}" ]] && return 0
+  done
+  return 1
+}
+
 stow_dotfiles() {
   require_command stow
   [[ -d ${HOME_DIR} ]] || die "Missing home directory: ${HOME_DIR}"
@@ -549,6 +587,9 @@ stow_dotfiles() {
   local src rel target
   while IFS= read -r -d '' src; do
     rel=${src#"${HOME_DIR}/"}
+    # Arch-superseded paths belong to the overlay: leave any deployed overlay
+    # symlink alone instead of reclaiming it for the shared source.
+    arch_path_is_superseded "${rel}" && continue
     target="${HOME}/${rel}"
     [[ -e ${target} || -L ${target} ]] || continue
     # find yields files and symlinks only, so a real directory here is a
@@ -558,8 +599,70 @@ stow_dotfiles() {
     log_info "Overwriting ${target}"
     rm -f -- "${target}"
   done < <(home_files)
-  stow -R --no-folding --ignore='(^|/)node_modules(/|$)' -d "${DOTFILES_DIR}" -t "${HOME}" home
+  if [[ ${DISTRO} == arch ]]; then
+    stow -R --no-folding --ignore='(^|/)node_modules(/|$)' \
+      --ignore='(^|/)\.config/ghostty/config$' \
+      --ignore='(^|/)\.config/hypr/input\.lua$' \
+      -d "${DOTFILES_DIR}" -t "${HOME}" home
+  else
+    stow -R --no-folding --ignore='(^|/)node_modules(/|$)' -d "${DOTFILES_DIR}" -t "${HOME}" home
+  fi
   log_ok 'Dotfiles stowed.'
+}
+
+# Every file and symlink under home-arch/, NUL-separated, in stable order.
+arch_overlay_files() {
+  find "${ARCH_HOME_OVERLAY_DIR}" -mindepth 1 \( -name node_modules -o -name .gitignore \) -prune \
+    -o \( -type f -o -type l \) -print0 | sort -z
+}
+
+# Link the Arch overlay after shared stow, so known overrides (Ghostty) win.
+# Arch-only; Fedora returns silently. Warns (not dies) without the overlay so
+# plain stow stays usable before home-arch/ lands; arch-setup itself fails
+# loudly instead (see arch_load_desktop_or_die).
+# No backup logic: same overwrite/no-backup contract as shared stow.
+stow_arch_overlay() {
+  [[ ${DISTRO} == arch ]] || return 0
+  [[ -d ${ARCH_HOME_OVERLAY_DIR} ]] || { log_warn 'home-arch/ has not landed yet; skipping the Arch overlay.'; return 0; }
+  require_command stow
+  log_step "Linking home-arch/ into ${HOME} (conflicts are overwritten, no backup)"
+  local src rel target
+  while IFS= read -r -d '' src; do
+    rel=${src#"${ARCH_HOME_OVERLAY_DIR}/"}
+    target="${HOME}/${rel}"
+    [[ -e ${target} || -L ${target} ]] || continue
+    [[ -d ${target} && ! -L ${target} ]] && die "Cannot stow ${rel}: ${target} is a directory."
+    [[ "$(realpath -m -- "${target}")" == "$(realpath -m -- "${src}")" ]] && continue
+    log_info "Overwriting ${target}"
+    rm -f -- "${target}"
+  done < <(arch_overlay_files)
+  stow -R --no-folding --ignore='(^|/)node_modules(/|$)' -d "${DOTFILES_DIR}" -t "${HOME}" home-arch
+  arch_prune_stale_shared_links
+  log_ok 'Arch overlay stowed.'
+}
+
+# Remove stale shared symlinks the Arch selection retired (the excluded hypr
+# input: the overlay never provides it). Only a symlink resolving into shared
+# home/ is provably ours, left by an earlier shared stow; real files and
+# foreign links are warned about and left alone, since the overwrite rule no
+# longer claims these paths.
+arch_prune_stale_shared_links() {
+  # Self-gated, not just caller-gated: Fedora must never reach the loop
+  # body no matter who calls this helper.
+  [[ ${DISTRO:-} == arch ]] || return 0
+  local rel target
+  for rel in ${ARCH_SUPERSEDED_SHARED_PATHS[@]+"${ARCH_SUPERSEDED_SHARED_PATHS[@]}"}; do
+    # Overlay-provided paths were already reclaimed by the overlay sweep above.
+    [[ -e ${ARCH_HOME_OVERLAY_DIR}/${rel} || -L ${ARCH_HOME_OVERLAY_DIR}/${rel} ]] && continue
+    target="${HOME}/${rel}"
+    [[ -e ${target} || -L ${target} ]] || continue
+    if [[ -L ${target} && "$(realpath -m -- "${target}")" == "$(realpath -m -- "${HOME_DIR}/${rel}")" ]]; then
+      log_info "Removing retired shared link ${target}"
+      rm -f -- "${target}"
+    else
+      log_warn "${target} is no longer managed on Arch; leaving it alone."
+    fi
+  done
 }
 
 # Herdr plugins are listed one `owner/repo` per line, comments allowed.
@@ -627,8 +730,12 @@ cmd_init() {
   install_tools
   ensure_nvidia
   stow_dotfiles
+  stow_arch_overlay
   sync_herdr_plugins
   set_fish_shell
+  if [[ ${DISTRO} == arch ]]; then
+    log_info 'Arch system provisioning is separate and idempotent: ./dot arch-check, then ./dot arch-setup.'
+  fi
   log_ok 'Init complete. Restart the terminal to load the fish configuration.'
 }
 
@@ -643,13 +750,19 @@ cmd_update() {
   install_tools
   ensure_nvidia
   stow_dotfiles
+  stow_arch_overlay
   sync_herdr_plugins
+  if [[ ${DISTRO} == arch ]]; then
+    log_info 'Arch system provisioning is separate and idempotent: ./dot arch-check, then ./dot arch-setup.'
+  fi
   log_ok 'Update complete.'
 }
 
 cmd_stow() {
+  detect_distro
   require_user
   stow_dotfiles
+  stow_arch_overlay
 }
 
 # Bundle entries missing from this machine, one `verb "name"` per line.
@@ -730,6 +843,9 @@ cmd_doctor() {
   local src rel target link_failed=0
   while IFS= read -r -d '' src; do
     rel=${src#"${HOME_DIR}/"}
+    # Arch-superseded shared paths are intentionally not stowed; the overlay
+    # check below owns them. Fedora checks every shared file, as before.
+    arch_path_is_superseded "${rel}" && continue
     target="${HOME}/${rel}"
     if [[ ! -L ${target} ]]; then
       log_error "${target} is not a symlink into home/. Run ./dot stow."
@@ -739,6 +855,19 @@ cmd_doctor() {
       link_failed=1
     fi
   done < <(home_files)
+  if [[ ${DISTRO} == arch && -d ${ARCH_HOME_OVERLAY_DIR} ]]; then
+    while IFS= read -r -d '' src; do
+      rel=${src#"${ARCH_HOME_OVERLAY_DIR}/"}
+      target="${HOME}/${rel}"
+      if [[ ! -L ${target} ]]; then
+        log_error "${target} is not a symlink into home-arch/. Run ./dot stow."
+        link_failed=1
+      elif [[ "$(realpath -m -- "${target}")" != "$(realpath -m -- "${src}")" ]]; then
+        log_error "${target} points elsewhere. Run ./dot stow."
+        link_failed=1
+      fi
+    done < <(arch_overlay_files)
+  fi
   if ((link_failed)); then failed=1; else log_ok 'All symlinks point at home/.'; fi
 
   ((failed == 0)) || die 'Doctor found the problems listed above.'
@@ -876,6 +1005,226 @@ cmd_benchmark_shell() {
   fi
 }
 
+# --- Arch provisioning ------------------------------------------------------
+
+# Canonical arch-setup/arch-check step order. Greeter runs after desktop
+# verification in the same run (see arch_require_desktop_verified); Limine
+# runs last, after the system it boots is stable.
+ARCH_SETUP_STEPS=(system gpu snapshots desktop greeter video limine)
+
+# Source one Arch provisioning module. Sourcing is side-effect free
+# (definitions only), so arch-check stays non-mutating.
+# Sourced-module registry. Re-sourcing a module with readonly globals dies
+# under set -e, and one arch-setup run needs the desktop module twice
+# (desktop step installs, greeter step re-verifies) — so every load below
+# is idempotent, keyed by module name and marked only after a clean source.
+declare -A DOT_SOURCED_MODULES=()
+
+arch_source_once() {
+  local key=$1 file=$2
+  [[ -n ${DOT_SOURCED_MODULES[${key}]+x} ]] && return 0
+  [[ -r ${file} ]] || die "Missing Arch provisioning module: ${file}"
+  # shellcheck source=/dev/null
+  source "${file}"
+  DOT_SOURCED_MODULES[${key}]=1
+}
+
+arch_load_module() {
+  arch_source_once "$1" "${ARCH_LIB_DIR}/$1"
+}
+
+arch_load_modules() {
+  arch_load_module arch-guard.sh
+  arch_load_module arch-system.sh
+  arch_load_module arch-gpu.sh
+  arch_load_module arch-snapshots.sh
+  arch_load_module arch-greeter.sh
+  arch_load_module arch-limine.sh
+  arch_load_module arch-video.sh
+}
+
+# Source the desktop integration or fail loudly: complete arch-setup has no
+# silent path past a missing desktop module. Owned by the arch-design agent.
+# True when the desktop interface is already present, however it was
+# loaded. Re-sourcing readonly globals would die under set -e, so presence
+# — not the registry below — is the real loaded condition.
+arch_desktop_is_loaded() {
+  declare -F arch_desktop_verify_overlay >/dev/null 2>&1
+}
+
+# Source the desktop module once when the file exists; false when missing
+# (the caller reports it). Never re-sources readonly globals.
+arch_source_desktop_quiet() {
+  arch_desktop_is_loaded && return 0
+  [[ -r ${ARCH_DESKTOP_MODULE} ]] || return 1
+  arch_source_once arch-desktop "${ARCH_DESKTOP_MODULE}"
+}
+
+arch_load_desktop_or_die() {
+  arch_source_desktop_quiet || die 'Arch desktop module is missing: lib/arch-desktop.sh has not landed. Complete arch-setup needs it.'
+}
+
+# The desktop draft predates the stow-based contract; require the interface
+# it adapts to, with a message that names the fix instead of a bare
+# "command not found" under set -e.
+arch_require_desktop_interface() {
+  local fn
+  for fn in arch_desktop_install_overlay arch_desktop_configure_caelestia arch_desktop_verify_overlay arch_desktop_verify_caelestia; do
+    declare -F "${fn}" >/dev/null 2>&1 \
+      || die "lib/arch-desktop.sh does not provide ${fn}; it predates the stow-based contract."
+  done
+}
+
+# Verify the desktop in place and refuse the dependent step on drift. The
+# greeter must never enable beside an unverified desktop.
+arch_require_desktop_verified() {
+  arch_load_desktop_or_die
+  arch_require_desktop_interface
+  arch_desktop_verify_overlay \
+    || die 'Desktop overlay is incomplete; refusing the dependent step. Fix it, then rerun.'
+  arch_desktop_verify_caelestia \
+    || die 'Caelestia integration is incomplete; refusing the dependent step. Fix it, then rerun.'
+}
+
+# Echo the selected steps, one per line, in canonical order. Dies on unknown
+# names, empty picks, or an empty filter value.
+arch_selected_steps() {
+  local filter=${1:-all} step piece
+  local -a wanted=()
+  if [[ ${filter} != all ]]; then
+    IFS=',' read -r -a wanted <<<"${filter}"
+    for piece in "${wanted[@]}"; do
+      local known=0
+      for step in "${ARCH_SETUP_STEPS[@]}"; do
+        [[ -n ${piece} && ${piece} == "${step}" ]] && known=1
+      done
+      ((known == 1)) || die "Unknown arch step: '${piece}'. Steps: ${ARCH_SETUP_STEPS[*]}."
+    done
+  fi
+  for step in "${ARCH_SETUP_STEPS[@]}"; do
+    if [[ ${filter} == all ]]; then
+      printf '%s\n' "${step}"
+      continue
+    fi
+    for piece in "${wanted[@]}"; do
+      if [[ ${piece} == "${step}" ]]; then
+        printf '%s\n' "${step}"
+        break
+      fi
+    done
+  done
+}
+
+# Provision this Arch machine. Helpers and the bundle install first, so a
+# minimal archinstall reaches a working desktop from ./dot init plus this one
+# command; every step is idempotent, so re-running repairs. Gating precedes
+# sudo, network, and every system mutation.
+cmd_arch_setup() {
+  local only=all replace_dm=0
+  while (($# > 0)); do
+    case "$1" in
+      --only) only=${2:-}; shift 2 || die 'Usage: ./dot arch-setup [--only step,...] [--replace-display-manager]' ;;
+      --only=*) only=${1#*=}; shift ;;
+      --replace-display-manager) replace_dm=1; shift ;;
+      -h | --help) die 'Usage: ./dot arch-setup [--only step,...] [--replace-display-manager]' ;;
+      *) die "Unknown option: $1. Usage: ./dot arch-setup [--only step,...] [--replace-display-manager]" ;;
+    esac
+  done
+  [[ -n ${only} ]] || die 'Usage: ./dot arch-setup [--only step,...] [--replace-display-manager]'
+  arch_load_modules
+  require_arch_system
+  require_user
+  begin_elevation
+  ensure_helpers
+  install_packages
+  stow_dotfiles
+  stow_arch_overlay
+  # Capture, then check: mapfile over a process substitution would mask a
+  # dying filter under set -e and report success over zero steps.
+  local steps_text steps_rc=0
+  steps_text="$(arch_selected_steps "${only}")" || steps_rc=$?
+  ((steps_rc == 0)) || die "Refusing to run with step filter '${only}' (see error above)."
+  local -a steps=() step
+  while IFS= read -r step; do
+    [[ -n ${step} ]] || continue
+    steps+=("${step}")
+  done <<<"${steps_text}"
+  ((${#steps[@]} > 0)) || die "Refusing an empty arch run with filter '${only}'."
+  for step in "${steps[@]}"; do
+    case "${step}" in
+      system) arch_system_setup ;;
+      gpu) arch_gpu_setup_drivers ;;
+      snapshots) arch_snapshots_setup ;;
+      desktop)
+        arch_load_desktop_or_die
+        arch_require_desktop_interface
+        arch_desktop_install_overlay
+        arch_desktop_configure_caelestia
+        arch_desktop_verify_overlay \
+          || die 'Desktop overlay is incomplete after install.'
+        arch_desktop_verify_caelestia \
+          || die 'Caelestia integration is incomplete after configuration.'
+        ;;
+      greeter)
+        arch_require_desktop_verified
+        arch_greeter_setup "${replace_dm}"
+        ;;
+      video) arch_video_setup ;;
+      limine) arch_limine_setup ;;
+    esac
+  done
+  log_ok "Arch setup complete (${steps[*]}). Reboot, then run ./dot arch-check from a Hyprland session."
+}
+
+# Verify Arch provisioning without changing anything. No elevation: every
+# probe is read-only (sudo-n tolerant where root-owned paths are involved).
+cmd_arch_check() {
+  local only=all
+  while (($# > 0)); do
+    case "$1" in
+      --only) only=${2:-}; shift 2 || die 'Usage: ./dot arch-check [--only step,...]' ;;
+      --only=*) only=${1#*=}; shift ;;
+      -h | --help) die 'Usage: ./dot arch-check [--only step,...]' ;;
+      *) die "Unknown option: $1. Usage: ./dot arch-check [--only step,...]" ;;
+    esac
+  done
+  [[ -n ${only} ]] || die 'Usage: ./dot arch-check [--only step,...]'
+  arch_load_modules
+  require_arch_system
+  local failed=0
+  local steps_text steps_rc=0
+  steps_text="$(arch_selected_steps "${only}")" || steps_rc=$?
+  ((steps_rc == 0)) || die "Refusing to check with step filter '${only}' (see error above)."
+  local -a steps=() step
+  while IFS= read -r step; do
+    [[ -n ${step} ]] || continue
+    steps+=("${step}")
+  done <<<"${steps_text}"
+  ((${#steps[@]} > 0)) || die "Refusing an empty arch check with filter '${only}'."
+  for step in "${steps[@]}"; do
+    case "${step}" in
+      system) arch_system_verify || failed=1 ;;
+      gpu) arch_gpu_verify || failed=1 ;;
+      snapshots) arch_snapshots_verify || failed=1 ;;
+      desktop)
+        if ! arch_desktop_is_loaded && ! arch_source_desktop_quiet; then
+          log_error 'Arch desktop module is missing: lib/arch-desktop.sh has not landed.'
+          failed=1
+        else
+          arch_require_desktop_interface
+          arch_desktop_verify_overlay || failed=1
+          arch_desktop_verify_caelestia || failed=1
+        fi
+        ;;
+      greeter) arch_greeter_verify || failed=1 ;;
+      video) arch_video_verify || failed=1 ;;
+      limine) arch_limine_verify || failed=1 ;;
+    esac
+  done
+  ((failed == 0)) || die 'Arch check found the problems listed above.'
+  log_ok 'Arch check passed: provisioning matches the repo.'
+}
+
 main() {
   local cmd=${1:-help}
   shift || true
@@ -888,6 +1237,8 @@ main() {
     check-packages) detect_distro; cmd_check_packages "$@" ;;
     package) detect_distro; cmd_package "$@" ;;
     benchmark-shell) cmd_benchmark_shell "$@" ;;
+    arch-setup) detect_distro; cmd_arch_setup "$@" ;;
+    arch-check) detect_distro; cmd_arch_check "$@" ;;
     help | -h | --help) usage ;;
     *) die "Unknown command: ${cmd}. See ./dot help." ;;
   esac

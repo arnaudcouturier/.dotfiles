@@ -1,12 +1,22 @@
 # AGENTS.md — maintainer notes
 
 Dotfiles for Arch Linux and Fedora Workstation. `dot` owns installation, one
-shared `home/`, one bundle per distro. System provisioning (GPU, bootloader,
-greeter, desktop shell) and atomic editions are out of scope. README.md covers
-usage; these are the rules that are easy to break.
+shared `home/`, one bundle per distro, plus an Arch-only `home-arch/` overlay.
+Arch system provisioning lives behind `./dot arch-setup`/`arch-check`
+(idempotent; re-running repairs). Fedora system provisioning stays out of
+scope apart from the existing NVIDIA path, as do atomic editions. README.md
+covers usage; these are the rules that are easy to break.
 
 - **Never edit `~` directly.** Edit `home/`, then `./dot stow`. Conflicts are
-  overwritten without backup, deliberately — don't add backup logic.
+  overwritten without backup, deliberately — don't add backup logic (home files never do). The `/etc` and bootloader backups inside
+  `lib/arch-*.sh` are the narrow exception: boot and login configs get one
+  restorable backup.
+- **Arch stow is selective, Fedora stow is unchanged.** On Arch, shared stow
+  ignores the paths `home-arch/` supersedes (Ghostty follows Caelestia there
+  while shared Ghostty follows DMS; shared `hypr/input.lua` is excluded for
+  the generated Caelestia tree, whose override carries the equivalent option).
+  The overlay stows after with the same overwrite/no-backup rules, and
+  `doctor` checks each tree against its selected source.
 - **Never translate package names between distros.** Each bundle is a recipe
   for one distro. `dot` refuses a verb the current distro cannot use and dies
   before changing anything. Verify a Fedora entry against its vendor before
@@ -28,11 +38,22 @@ usage; these are the rules that are easy to break.
   `rpm -q --qf '%{NAME}' -p <URL>`.
 - **Arch installs run `pacman -Syu`.** Arch does not support installing into a
   partially upgraded system; don't weaken it to `-S`.
-- **NVIDIA handling is hardware-conditional.** `ensure_nvidia` (init/update, or
+- **NVIDIA handling is hardware-conditional (Fedora path below; Arch lives in lib/arch-gpu.sh).** `ensure_nvidia` (init/update, or
   `./dot nvidia`) detects a PCI vendor-10de device with one lspci call and, on
   a hit, follows the Fedora gaming docs (system upgrade, then rpmfusion release
   packages + akmod-nvidia — a driver built against a fresh install's stale
   kernel comes up incomplete). It is a silent no-op otherwise; keep it that way.
+- **Arch gating precedes sudo.** `arch-setup`/`arch-check` refuse on non-Arch
+  before elevation, network, or any mutation. Keep it that way.
+- **Display-manager changes need the explicit flag.** `arch-setup` refuses
+  beside an incumbent DM; only `--replace-display-manager` disables one.
+  Limine entries are only added, never removed or reordered.
+- **No hardcoded machine layout.** GPU environment stays conditional on
+  detected hardware; shader paths resolve from the installed package; no
+  PCI IDs, disks, or hostnames in modules.
+- **`lib/arch-desktop.sh` belongs to the desktop agent.** `dot` guards its
+  interface with `declare -F`; never implement desktop behavior in `dot` or
+  system modules. `home-arch/` likewise: reference, never create.
 - **Elevation is terminal sudo only.** `init`/`update` authenticate once and
   refresh in the background. No pkexec, no NOPASSWD, no `sudo -A`. Don't call
   `sudo` from an agent shell — let `dot` do it.
@@ -45,4 +66,4 @@ a skill deleted from `home/`.
 
 Bash: `set -euo pipefail`, quoted expansions, `die` on bad input, a comment
 above anything non-obvious. Before committing a change to `dot`:
-`bash -n dot && shellcheck dot && ./dot doctor`.
+`bash -n dot lib/arch-*.sh && shellcheck dot lib/arch-*.sh && ./dot doctor`.

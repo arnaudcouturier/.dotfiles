@@ -22,6 +22,10 @@ does not support installing into a partially upgraded system. Config files are
 overwritten without a backup, so review `home/` first, especially the Git
 identity in `home/.config/git/config`.
 
+On Arch, user files are only half the machine. From a minimal archinstall
+with Limine and no desktop, run `./dot init` first, then `./dot arch-check`
+and `./dot arch-setup` (see Arch provisioning below).
+
 ## Everyday use
 
 ```bash
@@ -31,7 +35,37 @@ identity in `home/.config/git/config`.
 ./dot check-packages    # list bundle entries missing from this machine
 ./dot package list | add NAME | remove NAME
 ./dot benchmark-shell   # time fish startup
+./dot arch-check        # verify Arch provisioning (Arch-only, changes nothing)
+./dot arch-setup        # provision this Arch machine (Arch-only, idempotent)
 ```
+
+## Arch provisioning
+
+Starting point: a minimal archinstall with Limine as the bootloader and no
+desktop environment; btrfs for `/` if pre-upgrade snapshots are wanted.
+Documented path: `./dot init`, then `./dot arch-check`, then
+`./dot arch-setup`. Setup is idempotent: re-running it repairs drift.
+
+```bash
+./dot arch-setup                              # everything, in order
+./dot arch-setup --only system,gpu            # subset of steps, canonical order kept
+./dot arch-setup --replace-display-manager    # required to displace an incumbent DM
+./dot arch-check                              # read-only verification
+```
+
+Steps run in order — `system` (pacman options, swap policy, services), `gpu`
+(conditional microcode and driver stacks), `snapshots` (btrfs-only snapper),
+`desktop` (home overlay plus Caelestia integration), `greeter` (greetd plus
+sysc-greet, only after desktop verifies), `video` (mpv shader link),
+`limine` (palette theming plus a named firmware entry, last). `--only`
+filters provisioning steps, not the bundle: helpers, the full bundle
+install, and file stowing always run, so any subset stays repairable with
+nothing hidden.
+
+Two safety contracts: without `--replace-display-manager`, setup refuses
+beside an incumbent display manager instead of displacing it; Limine entries
+are only added, never removed — the archinstall entry is kept. Caelestia is
+the Arch desktop; Fedora keeps its current desktop untouched.
 
 ## Packages
 
@@ -67,17 +101,25 @@ Names are never translated between distros (`fd` vs `fd-find`, `github-cli` vs
 
 ## Layout
 
-- `dot` — the CLI; all installation logic lives here. NVIDIA drivers are
+- `dot` — the CLI; the CLI entry point; Arch provisioning lives in `lib/arch-*.sh` (sourced lazily for Arch commands only). NVIDIA drivers are
   hardware-conditional: `./dot nvidia` (also part of init/update) upgrades the
   system, then installs rpmfusion and akmod-nvidia per the Fedora gaming docs,
   only when the machine has an NVIDIA GPU.
 - `packages/*.bundle` — one package list per distro.
 - `home/` — mirrors `$HOME`, linked in by Stow: fish, Starship, Git, herdr,
   fastfetch, ripgrep, Hyprland input, Ghostty, agent skills, pi config, wallpapers.
-  Edit here, never `~` directly, then run `./dot stow`.
+  Edit here, never `~` directly, then run `./dot stow`. On Arch, `home-arch/`
+  (desktop overlay) stows after; shared Ghostty and hypr input yield to it there.
+
+- `lib/arch-*.sh` — Arch provisioning modules behind one setup/verify seam
+  each (system, GPU, snapshots, greeter, Limine, video); `lib/arch-desktop.sh`
+  is the desktop agent's Caelestia integration, guarded by interface checks.
+- `system/arch/` — Arch system templates (`/etc` and `/boot` sources of truth).
+- `home-arch/` — Arch desktop overlay (desktop agent owns it); stowed after
+  `home/` on Arch only, same overwrite/no-backup rules.
 
 herdr plugins are one `owner/repo` per line in
-`home/.config/herdr/plugins.txt`. System provisioning stays out of this repo.
+`home/.config/herdr/plugins.txt`. Fedora system provisioning stays out of this repo apart from NVIDIA; Arch provisioning is documented above.
 
 Inspired by [Dillon Mulroy's dotfiles](https://github.com/dmmulroy/.dotfiles),
 linked with [GNU Stow](https://www.gnu.org/software/stow/).

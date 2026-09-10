@@ -1,0 +1,15 @@
+# Managed by ./dot arch-setup; do not hand-edit without re-running it.
+#
+# sysc-greet is graphical: greetd starts niri for the login screen alone, and
+# niri quits itself when sysc-greet exits so greetd can start the session the
+# user picked. sysc-greet reads /usr/share/wayland-sessions, where Hyprland
+# ships hyprland.desktop (Exec=start-hyprland), so sessions launch through
+# Hyprland's own watchdog exactly as before.
+#
+# No [initial_session]: that key is greetd autologin, and this machine asks.
+[terminal]
+vt = 1
+
+[default_session]
+command = "niri -c /etc/greetd/niri-greeter-config.kdl"
+user = "greeter"

@@ -18,12 +18,14 @@ repo "ripgrep" # fast code search
 repo "bat" # cat with syntax highlighting
 repo "glow" # terminal markdown reader
 repo "direnv" # per-directory env (hooked in fish config, idle without .envrc)
+repo "lazygit" # terminal Git UI (wires the shared lg abbreviation)
 
 # Plumbing for these dotfiles
 repo "stow" # GNU Stow, deploys home/ via symlinks
 repo "shellcheck" # linter for the dot script
 repo "base-devel" # makepkg toolchain for AUR builds; no-op if already present
 repo "fastfetch" # minimalist system info
+repo "git" # version control (explicit so the bundle tracks and doctor checks it)
 
 # Herdr Annotate (plannotator/herdr-annotate plugin; document review bundles its own plannotator-tui binary)
 repo "bun" # JavaScript runtime for annotate's capture/manage actions
@@ -48,5 +50,114 @@ aur "proton-mail-bin" # Proton Mail and Calendar (the source build's sharp
                       # repack of Proton's own build)
 aur "equibop" # Equibop Discord client
 aur "chatgpt-desktop" # ChatGPT desktop app (repack of OpenAI's Linux binary)
+
+# Arch desktop infrastructure (./dot arch-setup provisions these; Caelestia is
+# the Arch desktop, DMS stays Fedora). Infrastructure only: no archive browsers,
+# editors, chat clients, music, VMs, or toolchains beyond what the requested
+# desktop needs to run. Hardware-conditional drivers, snapshot tooling, and the
+# bootloader install on demand inside their lib/arch-*.sh modules.
+# Desktop core (Hyprland plus the portals and privilege stack Caelestia needs)
+repo "hyprland" # Wayland compositor (Caelestia shell runs on it)
+repo "xdg-desktop-portal-hyprland" # screencast and portal backend for Hyprland
+repo "xdg-desktop-portal-gtk" # file chooser and settings portal
+repo "polkit" # privilege management
+repo "polkit-gnome" # Polkit agent Caelestia starts by absolute path
+repo "power-profiles-daemon" # performance profile switching
+repo "qt5-wayland" # Wayland support for Qt 5 apps
+repo "qt6-wayland" # Wayland support for Qt 6 apps
+repo "accountsservice" # user account service for the greeter
+repo "uwsm" # Wayland session manager (Caelestia uwsm-component session entry; Arch extra)
+repo "ghostty" # terminal emulator (Caelestia terminal keybind target)
+repo "neovim" # Neovim editor (shared LazyVim config; Caelestia editor target)
+repo "jq" # JSON processor for installer and desktop scripts
+repo "fuzzel" # application launcher and keybind cheatsheet menu
+repo "grim" # screenshot capture
+repo "slurp" # region selection for screenshots
+repo "hyprpicker" # color picker
+repo "cliphist" # clipboard history
+repo "ydotool" # automation backend for desktop keybinds
+# File manager (Caelestia SUPER+E target plus archive and thumbnail support)
+repo "thunar" # file manager
+repo "gvfs" # virtual filesystem support for Thunar
+repo "tumbler" # thumbnail service
+repo "thunar-volman" # removable media management
+repo "thunar-archive-plugin" # archive context menu for Thunar
+repo "xarchiver" # archive manager
+repo "ffmpegthumbnailer" # video thumbnails
+# Theming (what Caelestia executes or names at runtime)
+repo "gnome-keyring" # secret storage started by Caelestia at session start
+repo "geoclue" # location service for the optional night light
+repo "gammastep" # night-light provider toggled with SUPER+SHIFT+N
+repo "libnotify" # notification for the night-light toggle
+repo "trash-cli" # trash pruning behind the file manager
+repo "adw-gtk-theme" # GTK 3 theme written by Caelestia theming
+repo "papirus-icon-theme" # icon theme written by Caelestia theming
+repo "frameworkintegration" # Qt integration backing the Darkly widget style
+repo "dconf" # GSettings backend for Caelestia scheme theming
+# Fonts (Caelestia names JetBrains Mono Nerd directly; CJK stops boxes on the web)
+repo "noto-fonts" # Noto font family
+repo "noto-fonts-emoji" # color emoji font
+repo "ttf-dejavu" # DejaVu fallback fonts
+repo "ttf-nerd-fonts-symbols" # Nerd Font symbols
+repo "ttf-jetbrains-mono-nerd" # font Caelestia asks for by name
+repo "noto-fonts-cjk" # CJK fonts so web text renders
+repo "ttf-liberation" # metric-compatible Arial/Times/Courier stand-ins
+# Audio (PipeWire core the desktop expects, plus Bluetooth codecs)
+repo "pipewire" # audio and video stack
+repo "pipewire-audio" # PipeWire audio bits
+repo "pipewire-alsa" # ALSA routing through PipeWire
+repo "pipewire-pulse" # PulseAudio compatibility
+repo "pipewire-jack" # JACK routing through PipeWire (Caelestia audio component)
+repo "wireplumber" # PipeWire session manager
+repo "rtkit" # realtime scheduling so audio stays clean under load
+repo "pavucontrol" # volume control (Caelestia audio-settings target)
+repo "libldac" # LDAC Bluetooth codec
+repo "libfreeaptx" # aptX Bluetooth codec
+repo "libfdk-aac" # AAC Bluetooth codec
+# Network, hardware probing, and desktop integration
+repo "networkmanager" # network management
+repo "wpa_supplicant" # Wi-Fi authentication backend for NetworkManager
+repo "pciutils" # lspci hardware probing for GPU detection
+repo "wireless-regdb" # regulatory database for full 5/6 GHz Wi-Fi
+repo "linux-firmware" # firmware for hardware components
+repo "bluez" # Bluetooth stack
+repo "bluez-utils" # Bluetooth utilities
+repo "xdg-user-dirs" # manages ~/Documents, ~/Downloads and friends
+repo "xdg-utils" # xdg-open and desktop integration helpers
+repo "curl" # transfers for upstream installers
+repo "nano" # console editor for recovery sessions
+repo "man-db" # manual page reader
+repo "man-pages" # Linux manual pages
+repo "less" # pager used by man and git
+# Maintenance providers (timers and health checks wired by arch-setup; the
+# service step enables each unit only when its package is installed)
+repo "pacman-contrib" # paccache cache pruning timer
+repo "reflector" # mirrorlist ranking timer
+repo "fwupd" # firmware updates over LVFS
+repo "smartmontools" # drive health monitoring (SMART)
+# Swap policy provider (arch-setup deploys system/arch templates around it)
+repo "zram-generator" # compressed swap on zram
+# Greeter display stack (sysc-greet itself is AUR below)
+repo "greetd" # login daemon
+repo "niri" # compositor the greeter renders inside
+repo "kitty" # terminal the greeter runs in
+# Video pipeline (mpv upscales browser video; shaders link via arch-setup)
+repo "mpv" # video player and browser-video upscaler
+repo "yt-dlp" # URL resolver mpv calls for page URLs
+repo "mpv-shim-default-shaders" # GLSL shader pack linked into mpv config
+# GPU diagnostics (drivers themselves install on demand in lib/arch-gpu.sh)
+repo "mesa-utils" # GPU info utilities
+repo "vulkan-tools" # Vulkan info utilities
+repo "libva-utils" # VA-API info utilities
+
+# Desktop infrastructure from the AUR
+aur "caelestia-shell" # Caelestia shell itself (the desktop; cli alone only installs it)
+aur "caelestia-cli" # Caelestia installer CLI (drives the shell install)
+aur "bibata-cursor-theme-bin" # Bibata Modern Classic cursor named by desktop overrides
+aur "sysc-greet" # graphical greetd greeter rendered inside niri
+aur "pwvucontrol" # PipeWire volume control from the audio component (pavucontrol stays the keybind target)
+aur "papirus-folders" # folder recoloring for the Papirus icon theme
+aur "qtengine" # Qt platform theme named by Caelestia configuration
+aur "darkly-bin" # widget style named by Caelestia Qt configuration
 
 # herdr is installed by dot itself, using its vendor's installer.

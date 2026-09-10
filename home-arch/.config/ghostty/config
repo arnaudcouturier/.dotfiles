@@ -1,0 +1,19 @@
+# Ghostty terminal for Arch + Caelestia (see hypr-vars.lua for its keybinds).
+# Managed by the arch-desktop overlay (home-arch/); Arch-only, reapplied by
+# arch_desktop_deploy_overlay. The shared home/ Ghostty config stays
+# DMS-themed for Fedora and is never edited here: on Arch this copy replaces
+# the stowed file (backed up first), on Fedora it is never deployed.
+#
+# No colours here on purpose. Caelestia writes the active scheme as escape
+# sequences to ~/.local/state/caelestia/sequences.txt and its fish config
+# replays them at every interactive start, so the palette follows the scheme
+# live. Setting colours in this file would freeze them instead.
+#
+# The rest mirrors Caelestia's own foot.ini so both terminals match.
+font-family = JetBrains Mono Nerd Font
+font-size = 12
+window-padding-x = 25
+window-padding-y = 25
+# foot uses alpha 0.78 with blur; Hyprland blurs the transparent surface.
+background-opacity = 0.78
+cursor-style = bar
