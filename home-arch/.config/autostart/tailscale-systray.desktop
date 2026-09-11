@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Tailscale System Tray
+Comment=Start the Tailscale system tray at login (status, exit nodes, user switching)
+Exec=/usr/bin/systemctl --user start tailscale-systray.service
+Terminal=false
+NoDisplay=true
+StartupNotify=false

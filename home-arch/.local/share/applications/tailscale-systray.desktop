@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Tailscale
+GenericName=Mesh VPN
+Comment=Start the Tailscale system tray (status, exit nodes, user switching)
+Exec=/usr/bin/systemctl --user start tailscale-systray.service
+TryExec=/usr/bin/systemctl
+Terminal=false
+Icon=tailscale
+Categories=Network;
+Keywords=tailscale;vpn;mesh;
+StartupNotify=false

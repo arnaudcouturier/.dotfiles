@@ -122,6 +122,17 @@ other editors.
   loudly, while a deselected package is a silent noop. Verify reports
   missing/disabled/inactive distinctly. Repair is
   `./dot arch-setup --only system`; init/update never provision services.
+- Tailscale's Linux systray is Arch desktop surface: `home-arch/` carries
+  the upstream systemd user unit (`ExecStart=/usr/bin/tailscale systray`),
+  started at login by a hidden autostart entry that starts that unit (the
+  desktop deploy refuses link sources, so no wants symlink is committed), a
+  visible launcher entry (`Exec=systemctl --user start ...`; systemd keeps
+  the tray single-instance, so launcher and login cannot double the icon),
+  and the vendored `tailscale` icon (`tailscale.com/favicon.svg`, made
+  well-formed; the Arch package ships none). The
+  unprivileged tray cannot manage the daemon until the user is an operator,
+  so `arch_system_setup_tailscale` sets it during `arch-setup`
+  (package-gated like Mullvad; `tailscale up` login stays the user's step).
 
 ## Upstream installer package scope (resolved)
 

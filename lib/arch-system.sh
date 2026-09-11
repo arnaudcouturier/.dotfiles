@@ -100,6 +100,21 @@ arch_system_setup_mullvad() {
   arch_enable_system_unit mullvad-daemon.service
 }
 
+# Make the invoking user tailscaled's operator when the package is selected.
+# The systray (shipped by home-arch/ as a systemd user unit plus a launcher
+# entry) runs unprivileged, and only root or the operator may manage the
+# daemon; without this the tray shows "No permission to manage Tailscale".
+# Package-gated like Mullvad: installed with no unit is a broken install
+# (loud), deselected is a silent noop. Repeating the set is one local
+# preference write, no network.
+arch_system_setup_tailscale() {
+  pacman -Q tailscale >/dev/null 2>&1 || return 0
+  arch_unit_exists tailscaled.service \
+    || die 'tailscale is installed but tailscaled.service is missing: reinstall the package, then run ./dot arch-setup.'
+  sudo tailscale set --operator="$(id -un)" >/dev/null
+  log_ok "Tailscale operator is $(id -un)."
+}
+
 # Enable the core desktop services plus optional timers. Core units must
 # exist (their packages are in arch.bundle); deselectable timers only warn,
 # so a minimal bundle is never punished for skipping firmware or SMART tooling.
@@ -127,6 +142,7 @@ arch_system_setup_services() {
   for service in tailscaled.service docker.service; do
     arch_unit_exists "${service}" && arch_enable_system_unit "${service}" optional || true
   done
+  arch_system_setup_tailscale
   arch_system_setup_mullvad
   log_ok 'System services are enabled.'
 }
