@@ -149,6 +149,7 @@ repo "wireless-regdb" # regulatory database for full 5/6 GHz Wi-Fi
 repo "linux-firmware" # firmware for hardware components
 repo "bluez" # Bluetooth stack
 repo "bluez-utils" # Bluetooth utilities
+repo "bluetui" # Bluetooth management TUI (bluez front-end)
 repo "xdg-user-dirs" # manages ~/Documents, ~/Downloads and friends
 repo "xdg-utils" # xdg-open and desktop integration helpers
 repo "curl" # transfers for upstream installers
