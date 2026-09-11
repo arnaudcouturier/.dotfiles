@@ -4,7 +4,7 @@
 # look without shadowing shared home/ or touching Fedora. Covers loading
 # order (conf.d before config.fish), interactive-only silence, Fedora
 # unaffected, startup features preserved, night light off, no wallpaper
-# routine, and a commented-only monitor example.
+# deployment, and a commented-only monitor example.
 set -euo pipefail
 
 TEST_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
@@ -84,7 +84,7 @@ test_arch_assert_contains "${TEST_ARCH_REPO_ROOT}/lib/arch-desktop.sh" '--enable
 # --- Night light off. ---
 test_arch_assert_contains "${OVERLAY}/.config/caelestia/hypr-vars.lua" "automaticNightLight = false" 'night light must default off'
 
-# --- No wallpaper cloning (removed, not flagged off). ---
+# --- No wallpaper cloning or assets (removed, not flagged off). ---
 if declare -F arch_desktop_ensure_wallpapers >/dev/null 2>&1; then
   test_arch_die 'wallpaper routine still defined'
 fi
@@ -100,7 +100,7 @@ fi
 if grep -rn 'WALLPAPER\|ensure_wallpapers\|dharmx/walls' "${TEST_ARCH_REPO_ROOT}/lib/arch-desktop.sh" 2>/dev/null; then
   test_arch_die 'wallpaper constants still present in lib/arch-desktop.sh'
 fi
-[[ -d ${SHARED}/Pictures/wallpapers ]] || test_arch_die 'shared local wallpaper assets must be retained'
+[[ ! -e ${SHARED}/Pictures/wallpapers ]] || test_arch_die 'shared wallpaper assets must stay out of the stow tree'
 
 # --- Monitor: supported override only, commented example, no active layout. ---
 test_arch_assert_contains "${OVERLAY}/.config/caelestia/hypr-user.lua" 'Monitor settings live HERE' 'hypr-user must document monitor location'
