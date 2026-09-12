@@ -531,12 +531,14 @@ install_tools() {
 
 # --- nvidia -----------------------------------------------------------------
 
-# The entire detection: does lspci list a PCI device from NVIDIA (vendor
-# 10de)? It answers in milliseconds, and a missing lspci or an empty list
-# means there is nothing to do.
+# The entire detection: does lspci list an NVIDIA *display* controller
+# (vendor 10de, class VGA/3D/Display)? Scoped like arch_gpu_detect_vendors:
+# audio functions and other non-display 10de functions must never trigger a
+# display-driver install. It answers in milliseconds, and a missing lspci or
+# an empty list means there is nothing to do.
 has_nvidia_gpu() {
   command -v lspci >/dev/null 2>&1 || return 1
-  lspci -d 10de: 2>/dev/null | grep -q .
+  lspci -d 10de: 2>/dev/null | grep -Eqi 'VGA|3D|Display'
 }
 
 # The proprietary NVIDIA drivers, following

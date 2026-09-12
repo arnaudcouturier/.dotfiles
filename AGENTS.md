@@ -45,7 +45,8 @@ checks each tree against its selected source; Fedora is otherwise unchanged.
 - **Arch installs run `pacman -Syu`.** Arch does not support installing into a
   partially upgraded system; don't weaken it to `-S`.
 - **NVIDIA handling is hardware-conditional (Fedora path below; Arch lives in lib/arch-gpu.sh).** `ensure_nvidia` (init/update, or
-  `./dot nvidia`) detects a PCI vendor-10de device with one lspci call and, on
+  `./dot nvidia`) detects a PCI vendor-10de display controller (VGA/3D/Display
+  class, mirroring `arch_gpu_detect_vendors`) with one lspci call and, on
   a hit, follows the Fedora gaming docs (system upgrade, then rpmfusion release
   packages + akmod-nvidia — a driver built against a fresh install's stale
   kernel comes up incomplete). It is a silent no-op otherwise; keep it that way.

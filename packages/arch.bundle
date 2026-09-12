@@ -150,7 +150,11 @@ repo "networkmanager" # network management
 repo "wpa_supplicant" # Wi-Fi authentication backend for NetworkManager
 repo "pciutils" # lspci hardware probing for GPU detection
 repo "wireless-regdb" # regulatory database for full 5/6 GHz Wi-Fi
-repo "linux-firmware" # firmware for hardware components
+repo "linux-firmware" # firmware for hardware components (meta-package: pulls every
+                      # vendor split, including ~100MB of linux-firmware-nvidia blobs on
+                      # machines without NVIDIA hardware — inert firmware files, not the
+                      # driver; the NVIDIA kernel driver installs only via arch-setup's
+                      # hardware-gated gpu step, never via init/update)
 repo "bluez" # Bluetooth stack
 repo "bluez-utils" # Bluetooth utilities
 repo "bluetui" # Bluetooth management TUI (bluez front-end)

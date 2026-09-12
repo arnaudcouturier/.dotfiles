@@ -72,8 +72,9 @@ Fedora system provisioning is out of scope apart from NVIDIA. Atomic/OSTree
 editions are not supported.
 
 `./dot nvidia` (also part of `init`/`update`) is Fedora-only and refuses
-elsewhere. It probes once (`lspci` for vendor `10de`) and is a silent no-op
-without NVIDIA hardware. On a hit it follows the Fedora gaming docs: full
+elsewhere. It probes once (`lspci` for a vendor-`10de` display controller —
+`VGA`/`3D`/`Display` class, so non-display NVIDIA functions never trigger
+it) and is a silent no-op without NVIDIA display hardware. On a hit it follows the Fedora gaming docs: full
 system upgrade first (a driver built against a fresh install's stale kernel
 comes up incomplete), then rpmfusion release packages, then `akmod-nvidia`.
 The kernel module keeps building after install — wait a few minutes
