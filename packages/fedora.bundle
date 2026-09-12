@@ -68,7 +68,7 @@ repo "nodejs22-bin" # Node.js runtime (Fedora 44 ships parallel-installable node
 repo "nodejs22-npm-bin" # npm, paired with nodejs22-bin (the two own node and npm on PATH)
 npm "@earendil-works/pi-coding-agent" # pi coding agent CLI
 npm "@openai/codex" # OpenAI Codex CLI
-npm-scripts "@opencode-ai/cli@beta" # opencode2 (the @opencode/cli scope is an empty placeholder with no beta tag; its postinstall fetches the platform binary, and without it the CLI is a stub that refuses to run)
+npm-scripts "@opencode/cli" # OpenCode (binary opencode; its postinstall fetches the platform binary, and without it the CLI is a stub that refuses to run)
 npm-scripts "bun" # JavaScript runtime for Herdr Annotate's capture/manage actions (oven-sh's npm build; its postinstall fetches the platform binary)
 # Obsidian agent skills (home/.agents/skills/): the CLIs the defuddle and knap
 # skills invoke; both are npm-only upstream.

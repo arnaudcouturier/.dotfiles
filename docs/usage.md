@@ -91,7 +91,7 @@ The kernel module keeps building after install — wait a few minutes
 | `flatpak "app.id"` | Fedora | system-wide Flathub install; vendor-verified builds only |
 | `appimage "Name" "URL"` | both | pinned AppImage into `~/Applications` plus launcher |
 | `npm "package"` | both | global install, always `--ignore-scripts` |
-| `npm-scripts "package"` | both | exemption when the postinstall *is* the install |
+| `npm-scripts "package"` | both | exemption when the postinstall *is* the install (entry's own scripts allow-listed via `--allow-scripts`) |
 
 Rules: names are never translated between distros; every Fedora entry is
 verified against its vendor before adding — never guessed from the Arch name.

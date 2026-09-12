@@ -366,9 +366,11 @@ pkg_install() {
       # A package whose postinstall does the actual install — it fetches the
       # platform binary, and --ignore-scripts leaves a stub that dies on first
       # run. Filed under its own verb so the exemption is one grep away.
+      # npm 12 additionally gates scripts behind allowScripts (default deny),
+      # so the entry's own package — tag stripped — is allow-listed.
       require_command npm
       log_warn "Running ${name}'s own install scripts as root: this entry is exempt from --ignore-scripts."
-      sudo npm install -g "${name}"
+      sudo npm install -g --allow-scripts="$(npm_entry_name "${name}")" "${name}"
       ;;
     appimage) appimage_install "${name}" "${url}" ;;
   esac

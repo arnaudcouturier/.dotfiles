@@ -113,9 +113,11 @@ other editors.
   Primary sources: `https://mega.io/desktop` (download URLs),
   `https://mega.nz/linux/repo/Arch_Extra/x86_64/` (directory + DB).
   Nothing MEGA is claimed on Fedora: no bundle lines, no repo, no key.
-- Arch opencode2 is `aur "opencode-beta"` (binary `opencode2`); the
-  official-extra `opencode` package is stable v1 (binary `opencode`) and is
-  not a substitute. No `dot` change was needed (existing `aur` batch).
+- Arch OpenCode is `npm-scripts "@opencode/cli"` (binary `opencode`;
+  postinstall fetches the platform binary, so plain `npm` with
+  `--ignore-scripts` leaves a stub that refuses to run). The official-extra
+  `opencode` package is stable v1 (wrong product) and the AUR `opencode-beta`
+  route is not used. No `dot` change was needed (existing `npm-scripts` batch).
 - Mullvad VPN needs its daemon: `arch_system_setup_mullvad` enables
   `mullvad-daemon.service` (required) only when `mullvad-vpn` is installed —
   a missing unit with the package present is a broken install and fails

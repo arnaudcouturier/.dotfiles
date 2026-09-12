@@ -42,6 +42,11 @@ repo "npm" # npm for the npm entries below (pulls nodejs)
 npm "defuddle" # clean web-page extraction for the defuddle skill
 npm "knap" # Markdown template renderer for the knap skill
 
+# AI agent CLI (npm-only upstream; the postinstall fetches the platform
+# binary, so this stays npm-scripts — plain npm leaves a stub that refuses
+# to run with "postinstall script was not run").
+npm-scripts "@opencode/cli" # OpenCode (binary opencode; postinstall fetches the platform binary)
+
 # Applications from the official repositories
 repo "github-cli" # GitHub CLI
 repo "obsidian" # Obsidian notes (packaged here; Fedora uses the Flathub build)
@@ -64,7 +69,6 @@ aur "proton-mail-bin" # Proton Mail and Calendar (the source build's sharp
 aur "equibop-git" # Equibop Discord client, git build tracking Equicord upstream (provides/conflicts equibop, so exactly one client installs)
 aur "chatgpt-desktop" # ChatGPT desktop app (repack of OpenAI's Linux binary)
 aur "spotify" # Spotify client, proprietary repack (upstream spotify component stays disabled; no spicetify theming)
-aur "opencode-beta" # OpenCode V2 beta (binary opencode2; stable opencode is a different binary)
 
 # Applications from the MEGA vendor repository (lib/arch-mega.sh configures
 # DEB_Arch_Extra before install; Thunar file manager integration)

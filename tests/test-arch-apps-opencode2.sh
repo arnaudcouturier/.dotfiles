@@ -1,12 +1,18 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC1091 # sandbox harness computes source paths at runtime; static following is impossible by design
-# tests/test-arch-apps-opencode2.sh — the Arch bundle carries OpenCode V2 beta
-# as an AUR entry without substituting the stable CLI or renaming products.
+# tests/test-arch-apps-opencode2.sh — the Arch bundle carries OpenCode as an
+# npm-scripts entry (scripts-enabled install) without substituting the wrong
+# product or renaming packages.
 #
-# Evidence: npm @opencode-ai/cli@beta and @opencode/cli@beta both expose
-# bin.opencode2 (opencode2 binary); Arch extra ships stable `opencode`
-# (binary opencode, wrong product); AUR opencode-beta Provides opencode2 and
-# installs /usr/bin/opencode2. No package is literally named opencode2.
+# Evidence (npm registry, Sep 2026): @opencode/cli@beta is 0.0.0-beta-19507
+# (bin opencode + opencode2, both the real binary) and @opencode/cli@latest
+# is 2.0.0 (bin opencode real after postinstall, opencode2 a shim saying
+# "opencode2 is now just opencode"); @opencode-ai/cli@beta is stale at
+# 0.0.0-beta-19271. Same anomalyco/opencode repo backs both scopes, so the
+# live scope is @opencode/cli. Arch extra ships stable v1 `opencode`
+# (binary opencode, wrong product); AUR opencode-beta Provides
+# opencode/opencode2 but the dotfiles use the npm route, so it must not
+# appear. No package is literally named opencode2.
 set -euo pipefail
 
 TEST_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
@@ -20,20 +26,29 @@ BUNDLE="${TEST_ARCH_REPO_ROOT}/packages/arch.bundle"
 
 [[ -r ${BUNDLE} ]] || test_arch_die 'packages/arch.bundle missing'
 
-# Exactly one opencode-beta entry, filed as an AUR package.
-test_arch_assert_eq 1 "$(grep -cE '^aur "opencode-beta"(#| )' "${BUNDLE}")" 'one aur opencode-beta entry'
+# Exactly one OpenCode entry, filed as npm-scripts (postinstall fetches the
+# platform binary; plain npm with --ignore-scripts leaves a stub that dies
+# with "postinstall script was not run").
+test_arch_assert_eq 1 "$(grep -cE '^npm-scripts "@opencode/cli"(#| )' "${BUNDLE}")" 'one npm-scripts @opencode/cli entry'
 
-# The entry's own comment names the opencode2 binary, so a search for
-# "opencode2" lands on the why, not just the package name.
-test_arch_assert_contains "${BUNDLE}" 'opencode2' 'bundle comment names the opencode2 binary'
+# The entry's own comment names the opencode binary, so a search for
+# "opencode" lands on the why, not just the package name.
+test_arch_assert_contains "${BUNDLE}" 'binary opencode' 'bundle comment names the opencode binary'
 
-# No silent substitution: the stable CLI must not be filed as the answer,
-# and no literal opencode2 package name may appear (none exists upstream).
+# No silent substitution: the stable v1 CLI must not be filed as the answer,
+# the AUR beta route must stay out, and no literal opencode2 package name may
+# appear (none exists upstream).
 if grep -Eq '^repo "opencode"([[:space:]]|#|$)' "${BUNDLE}"; then
-  test_arch_die 'stable repo "opencode" must not stand in for opencode2'
+  test_arch_die 'stable repo "opencode" must not stand in for OpenCode v2'
+fi
+if grep -Eq '^aur "opencode-beta"([[:space:]]|#|$)' "${BUNDLE}"; then
+  test_arch_die 'opencode-beta must not reappear: OpenCode installs via npm-scripts'
 fi
 if grep -Eq '^(repo|aur) "opencode2"([[:space:]]|#|$)' "${BUNDLE}"; then
-  test_arch_die 'no literal "opencode2" package exists upstream; the entry must stay opencode-beta'
+  test_arch_die 'no literal "opencode2" package exists upstream'
+fi
+if grep -Eq '^npm "@opencode/cli' "${BUNDLE}"; then
+  test_arch_die 'plain npm "@opencode/cli" leaves the postinstall stub; the entry must stay npm-scripts'
 fi
 
 # The nvim-repair handover is preserved: exactly one Equibop client entry,
@@ -55,5 +70,5 @@ while IFS= read -r line || [[ -n ${line} ]]; do
   esac
 done <"${BUNDLE}"
 
-test_arch_assert_no_live_paths 'opencode2 bundle entry'
-printf 'opencode2 stays an explicit AUR beta entry; equibop-git untouched.\n'
+test_arch_assert_no_live_paths 'opencode bundle entry'
+printf 'opencode stays an explicit npm-scripts entry; equibop-git untouched.\n'

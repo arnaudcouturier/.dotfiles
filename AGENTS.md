@@ -35,7 +35,9 @@ checks each tree against its selected source; Fedora is otherwise unchanged.
 - **npm entries install with `--ignore-scripts`.** The `npm-scripts` verb is
   the deliberate exemption, for a package whose postinstall *is* the install
   (it fetches the platform binary). Don't file an entry there to make an
-  install quieter — only when the CLI is a stub without it.
+  install quieter — only when the CLI is a stub without it. `npm-scripts`
+  allow-lists only the entry's own package via `--allow-scripts` (npm 12
+  denies all scripts by default).
 - **`rpm` and `appimage` entries carry an explicit name** because the URL does
   not reveal it — `ProtonMail-desktop-beta.rpm` installs as `proton-mail`, and
   Keeper's real dist tag is `1.fc37`. Read a name with
