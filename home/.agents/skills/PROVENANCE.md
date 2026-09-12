@@ -42,8 +42,8 @@ obsidian-bases, and json-canvas are inert markdown.
 
 ## axtonliu visual skills (2026-09-11, from https://github.com/axtonliu/axton-obsidian-visual-skills at 1265976)
 
-Imported 2 of 3 skills: excalidraw-diagram, mermaid-visualizer (SKILL.md +
-references only, demo assets excluded). obsidian-canvas-creator deliberately
-excluded (vault dropped native canvas for Excalidraw). MIT license. Upstream
+Imported all 3 skills: excalidraw-diagram, mermaid-visualizer (SKILL.md +
+references only, demo assets excluded) and obsidian-canvas-creator (with its
+2 template .canvas). MIT license. Upstream
 status is Experimental; excalidraw-diagram embeds concrete anti-overlap and
 font-size rules. Stowed to `~/.agents/skills/` like the rest.
