@@ -11,7 +11,7 @@ recipes are [`packages/arch.bundle`](../packages/arch.bundle) and
 - `./dot stow` — relink shared `home/` plus the selected overlay after editing
   the repo. No sudo, no backup: conflicts are overwritten.
 - `./dot doctor` — checks helpers (git, stow, fish, herdr, claude, plus yay on
-  Arch), login shell, full bundle, herdr plugins, and symlinks against their
+  Arch), login shell, full bundle, herdr plugins and integrations, and symlinks against their
   selected sources.
 - `./dot check-packages` — lists bundle entries missing here (exit 1 when any).
 - `./dot package list` — prints this distro's bundle.
@@ -27,6 +27,11 @@ recipes are [`packages/arch.bundle`](../packages/arch.bundle) and
 
 Herdr plugins are one `owner/repo` per line in `home/.config/herdr/plugins.txt`;
 `init`/`update` sync them and reload the live server when one runs.
+
+Herdr agent integrations are one `herdr integration install` target per line
+in `home/.config/herdr/integrations.txt`; `init`/`update` sync them. An
+integration whose agent is not installed yet is skipped with a warning —
+re-run `init` after installing the agent.
 
 ## Arch provisioning
 

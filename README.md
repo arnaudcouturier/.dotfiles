@@ -28,7 +28,7 @@ cd ~/.dotfiles
 ```
 
 `init` installs helpers and this distro's bundle, links configs, syncs herdr
-plugins, and sets fish as the login shell.
+plugins and integrations, and sets fish as the login shell.
 
 **Arch** — from minimal archinstall (Limine, no desktop; btrfs for snapshots).
 Links `home/` + `home-arch/`:
