@@ -17,9 +17,8 @@ set -euo pipefail
 #   upstream defines both as user-edited),
 #   the Caelestia installer run and upstream tree validation, the night
 #   light patch, and home-side theme enables for kept apps. Everything runs as the desktop user: no sudo anywhere here.
-# - The lead owns dot, gating, packages, /etc and systemd, greetd, video
-#   (shader link), and Limine. Shader linking lives in lib/arch-video.sh;
-#   this module only ships mpv.conf/input.conf for video to consume.
+# - The lead owns dot, gating, packages, /etc and systemd, greetd, and
+#   Limine.
 # - Upstream Caelestia owns ~/.config/hypr/hyprland.lua, the whole
 #   ~/.config/hypr/hyprland/ tree, ~/.local/state/caelestia/*, and
 #   ~/.config/uwsm/*: this module patches execs.lua and verifies the rest,
@@ -455,7 +454,7 @@ arch_desktop_enable_equibop_theme() {
 # pristine first install). Then Equibop theme when supported,
 # and a final Hyprland verify. A missing required tree is a loud death,
 # never warn-green. Sequence contract: packages (lead) -> this -> overlay
-# verify + caelestia verify (greeter gate) -> greeter/video/limine (lead).
+# verify + caelestia verify (greeter gate) -> greeter/limine (lead).
 arch_desktop_configure_caelestia() {
   arch_desktop_require_caller_interface || return 1
   require_command pacman

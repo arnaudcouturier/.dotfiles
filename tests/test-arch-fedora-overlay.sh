@@ -91,7 +91,7 @@ cmp -s -- "${TEST_ARCH_SANDBOX}/fresh-sums-first.txt" "${TEST_ARCH_SANDBOX}/fres
 
 # --- Cross-distro: the Arch tree never deploys on Fedora and vice versa. ---
 stow_arch_overlay >/dev/null
-[[ ! -e ${FRESH}/.config/mpv/mpv.conf ]] \
+[[ ! -e ${FRESH}/.config/gtk-3.0/settings.ini ]] \
   || test_arch_die 'Arch overlay deployed on Fedora'
 test_arch_assert_eq "${FEDORA}/.config/ghostty/config" \
   "$(realpath -m -- "${FRESH}/.config/ghostty/config")" 'Arch overlay cannot displace Fedora ghostty'

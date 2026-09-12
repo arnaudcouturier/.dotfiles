@@ -177,10 +177,7 @@ repo "zram-generator" # compressed swap on zram
 repo "greetd" # login daemon
 repo "niri" # compositor the greeter renders inside
 repo "kitty" # terminal the greeter runs in
-# Video pipeline (mpv upscales browser video; shaders link via arch-setup)
-repo "mpv" # video player and browser-video upscaler
-repo "yt-dlp" # URL resolver mpv calls for page URLs
-repo "mpv-shim-default-shaders" # GLSL shader pack linked into mpv config
+repo "yt-dlp" # video and audio downloader
 # GPU diagnostics (drivers themselves install on demand in lib/arch-gpu.sh)
 repo "mesa-utils" # GPU info utilities
 repo "vulkan-tools" # Vulkan info utilities

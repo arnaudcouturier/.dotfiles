@@ -100,7 +100,7 @@ grep -Fq 'arch_gaming_setup' "${GAMING_LIB}" || test_arch_die 'setup entry missi
 grep -Fq 'arch_gaming_verify' "${GAMING_LIB}" || test_arch_die 'verify entry missing'
 
 # --- Static: dot wires the step between gpu and snapshots. ---
-grep -Fq 'ARCH_SETUP_STEPS=(system gpu gaming snapshots desktop greeter video limine)' "${TEST_ARCH_REPO_ROOT}/dot" \
+grep -Fq 'ARCH_SETUP_STEPS=(system gpu gaming snapshots desktop greeter limine)' "${TEST_ARCH_REPO_ROOT}/dot" \
   || test_arch_die 'gaming must sit between gpu and snapshots in ARCH_SETUP_STEPS'
 grep -Fq 'arch_load_module arch-gaming.sh' "${TEST_ARCH_REPO_ROOT}/dot" \
   || test_arch_die 'dot must load the gaming module'
@@ -108,7 +108,7 @@ grep -Fq 'gaming) arch_gaming_setup ;;' "${TEST_ARCH_REPO_ROOT}/dot" \
   || test_arch_die 'arch-setup must dispatch the gaming step'
 grep -Fq 'gaming) arch_gaming_verify || failed=1 ;;' "${TEST_ARCH_REPO_ROOT}/dot" \
   || test_arch_die 'arch-check must verify the gaming step'
-grep -Fq 'system gpu gaming snapshots desktop greeter video limine' "${TEST_ARCH_REPO_ROOT}/dot" \
+grep -Fq 'system gpu gaming snapshots desktop greeter limine' "${TEST_ARCH_REPO_ROOT}/dot" \
   || test_arch_die 'help must list the gaming step'
 
 # --- Declined: absent + "n" skips with info, installs nothing. ---

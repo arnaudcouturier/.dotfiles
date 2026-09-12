@@ -25,20 +25,20 @@ arch_desktop_overlay_available >/dev/null
 test_arch_assert_contains <(arch_desktop_override_relpaths) '.config/ghostty/config' 'ghostty is the approved shadow'
 arch_desktop_is_approved_override '.config/ghostty/config'
 set +e
-arch_desktop_is_approved_override '.config/mpv/mpv.conf' >/dev/null 2>&1
+arch_desktop_is_approved_override '.config/gtk-3.0/settings.ini' >/dev/null 2>&1
 approved_status=$?
 set -e
-((approved_status != 0)) || test_arch_die 'mpv.conf counted as an approved shadow'
+((approved_status != 0)) || test_arch_die 'settings.ini counted as an approved shadow'
 
 # --- Install over conflicts: diverged file and dangling link are replaced. ---
-mkdir -p -- "${TEST_ARCH_HOME}/.config/mpv" "${TEST_ARCH_HOME}/.config/ghostty"
-printf '# local divergence\n' >"${TEST_ARCH_HOME}/.config/mpv/mpv.conf"
+mkdir -p -- "${TEST_ARCH_HOME}/.config/gtk-3.0" "${TEST_ARCH_HOME}/.config/ghostty"
+printf '# local divergence\n' >"${TEST_ARCH_HOME}/.config/gtk-3.0/settings.ini"
 ln -s -- "${TEST_ARCH_HOME}/does-not-exist" "${TEST_ARCH_HOME}/.config/ghostty/config"
 find "${TEST_ARCH_REPO_ROOT}/home-arch" -type f -exec sha256sum -- {} + | sort -k2 \
   >"${TEST_ARCH_SANDBOX}/overlay-source-before.txt"
 arch_desktop_install_overlay >/dev/null
-cmp -s -- "${TEST_ARCH_REPO_ROOT}/home-arch/.config/mpv/mpv.conf" "${TEST_ARCH_HOME}/.config/mpv/mpv.conf" \
-  || test_arch_die 'diverged mpv.conf was not replaced by the overlay'
+cmp -s -- "${TEST_ARCH_REPO_ROOT}/home-arch/.config/gtk-3.0/settings.ini" "${TEST_ARCH_HOME}/.config/gtk-3.0/settings.ini" \
+  || test_arch_die 'diverged settings.ini was not replaced by the overlay'
 test_arch_assert_eq "${TEST_ARCH_REPO_ROOT}/home-arch/.config/ghostty/config" \
   "$(realpath -m -- "${TEST_ARCH_HOME}/.config/ghostty/config")" 'ghostty resolves to the overlay'
 
@@ -95,17 +95,17 @@ rmdir -- "${TEST_ARCH_HOME}/.local/bin/hypr-keybinds"
 arch_desktop_install_overlay >/dev/null
 
 # --- Unapproved shared shadow dies; approved shadow proceeds. ---
-ln -sfn -- "${TEST_ARCH_REPO_ROOT}/home/.config/mpv/mpv.conf" "${TEST_ARCH_HOME}/.config/mpv/mpv.conf"
+ln -sfn -- "${TEST_ARCH_REPO_ROOT}/home/.config/gtk-3.0/settings.ini" "${TEST_ARCH_HOME}/.config/gtk-3.0/settings.ini"
 set +e
 ( arch_desktop_install_overlay >/dev/null 2>&1 )
 unapproved_status=$?
 set -e
 ((unapproved_status != 0)) || test_arch_die 'unapproved shared shadow installed silently'
 # The refusal correctly leaves the offender: remove it, then reclaim.
-rm -f -- "${TEST_ARCH_HOME}/.config/mpv/mpv.conf"
+rm -f -- "${TEST_ARCH_HOME}/.config/gtk-3.0/settings.ini"
 arch_desktop_install_overlay >/dev/null
-test_arch_assert_eq "${TEST_ARCH_REPO_ROOT}/home-arch/.config/mpv/mpv.conf" \
-  "$(realpath -m -- "${TEST_ARCH_HOME}/.config/mpv/mpv.conf")" 'overlay reclaims mpv.conf'
+test_arch_assert_eq "${TEST_ARCH_REPO_ROOT}/home-arch/.config/gtk-3.0/settings.ini" \
+  "$(realpath -m -- "${TEST_ARCH_HOME}/.config/gtk-3.0/settings.ini")" 'overlay reclaims settings.ini'
 
 # --- dot interplay, Arch: shared stow skips forwarding aliases and never
 # --- reclaims the overlay; repeated cycles stay converged. ---
@@ -145,7 +145,7 @@ test_arch_assert_eq "${TEST_ARCH_REPO_ROOT}/home-fedora/.config/ghostty/config" 
 test_arch_assert_eq "${TEST_ARCH_REPO_ROOT}/home-fedora/.config/hypr/input.lua" \
   "$(realpath -m -- "${HOME3}/.config/hypr/input.lua")" 'Fedora overlay provides input.lua'
 stow_arch_overlay >/dev/null
-[[ ! -e ${HOME3}/.config/mpv/mpv.conf ]] \
+[[ ! -e ${HOME3}/.config/gtk-3.0/settings.ini ]] \
   || test_arch_die 'Arch overlay stow deployed Arch files on Fedora'
 test_arch_assert_eq "${TEST_ARCH_REPO_ROOT}/home-fedora/.config/ghostty/config" \
   "$(realpath -m -- "${HOME3}/.config/ghostty/config")" 'Arch overlay cannot displace Fedora ghostty'

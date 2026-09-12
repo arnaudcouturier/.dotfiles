@@ -49,8 +49,7 @@ or stow, so any subset stays repairable:
 4. `desktop` — Arch overlay plus Caelestia integration.
 5. `greeter` — greetd plus sysc-greet; re-verifies the desktop first, even under
    `--only greeter`.
-6. `video` — mpv shader link from the installed package's shader directory.
-7. `limine` — palette theming plus a named firmware entry, last.
+6. `limine` — palette theming plus a named firmware entry, last.
 
 Safety contracts:
 

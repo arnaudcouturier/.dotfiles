@@ -56,8 +56,7 @@ checks each tree against its selected source; Fedora is otherwise unchanged.
   beside an incumbent DM; only `--replace-display-manager` disables one.
   Limine entries are only added, never removed or reordered.
 - **No hardcoded machine layout.** GPU environment stays conditional on
-  detected hardware; shader paths resolve from the installed package; no
-  PCI IDs, disks, or hostnames in modules.
+  detected hardware; no PCI IDs, disks, or hostnames in modules.
 - **`lib/arch-desktop.sh` belongs to the desktop agent.** `dot` guards its
   interface with `declare -F`; never implement desktop behavior in `dot` or
   system modules. `home-arch/` likewise: reference, never create.

@@ -3,8 +3,8 @@
 #
 # Covers the portable half of the archive's 00-base and 30-services modules:
 # repository options, compressed swap, VM tunables, and service enables. The
-# AUR helper stays yay (no paru switch); GPU, snapshots, greeter, Limine, and
-# video each live in their own arch module behind the same setup/verify seam.
+# AUR helper stays yay (no paru switch); GPU, snapshots, greeter, and Limine
+# each live in their own arch module behind the same setup/verify seam.
 
 set -euo pipefail
 

@@ -24,7 +24,7 @@ OVERLAY="${TEST_ARCH_REPO_ROOT}/home-arch"
 # Narrow live-home snapshot: the managed paths stow would own on Arch.
 LIVE_SNAPSHOT="${TEST_ARCH_SANDBOX}/live-before.txt"
 : >"${LIVE_SNAPSHOT}"
-for rel in .config/ghostty/config .config/mpv/mpv.conf .config/mpv/input.conf \
+for rel in .config/ghostty/config \
   .config/gtk-3.0/settings.ini .config/gtk-4.0/settings.ini \
   .config/environment.d/10-desktop-theme.conf .local/bin/hypr-keybinds \
   .config/caelestia/hypr-vars.lua .config/caelestia/hypr-user.lua; do
@@ -84,7 +84,7 @@ done < <(cd -- "${OVERLAY}" && find . -mindepth 1 -type f | sort)
 # Live home untouched: the narrow snapshot is byte-identical.
 LIVE_AFTER="${TEST_ARCH_SANDBOX}/live-after.txt"
 : >"${LIVE_AFTER}"
-for rel in .config/ghostty/config .config/mpv/mpv.conf .config/mpv/input.conf \
+for rel in .config/ghostty/config \
   .config/gtk-3.0/settings.ini .config/gtk-4.0/settings.ini \
   .config/environment.d/10-desktop-theme.conf .local/bin/hypr-keybinds \
   .config/caelestia/hypr-vars.lua .config/caelestia/hypr-user.lua; do

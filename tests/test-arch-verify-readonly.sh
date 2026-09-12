@@ -27,7 +27,7 @@ printf 'systemctl %s\n' "\$*" >>"$(test_arch_calls_log)"
 exit 1
 EOF
 chmod 755 -- "${TEST_ARCH_BIN}/systemctl"
-for cmd in pacman pacman-conf swapon sysctl lsblk efibootmgr id getent mpv Hyprland lspci; do
+for cmd in pacman pacman-conf swapon sysctl lsblk efibootmgr id getent Hyprland lspci; do
   test_arch_stub_command "${cmd}"
 done
 # findmnt-output override for the btrfs pass is env-driven; the rest stay mute.
@@ -35,7 +35,7 @@ done
 # shellcheck source=/dev/null
 set -- help
 source "${TEST_ARCH_REPO_ROOT}/dot" >/dev/null
-for module in arch-guard arch-system arch-gpu arch-gaming arch-snapshots arch-greeter arch-limine arch-video; do
+for module in arch-guard arch-system arch-gpu arch-gaming arch-snapshots arch-greeter arch-limine; do
   # shellcheck source=/dev/null
   source "${TEST_ARCH_REPO_ROOT}/lib/${module}.sh"
 done
@@ -63,7 +63,6 @@ run_verify gaming arch_gaming_verify
 run_verify snapshots-ext4 arch_snapshots_verify
 run_verify greeter arch_greeter_verify
 run_verify limine arch_limine_verify
-run_verify video arch_video_verify
 export TEST_FINDMNT_FSTYPE=btrfs
 run_verify snapshots-btrfs arch_snapshots_verify
 

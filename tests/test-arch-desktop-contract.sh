@@ -6,7 +6,7 @@
 # share; installs the overlay with stow for the stowed set plus copy-once
 # real-file deploy for the two compositor-owned user files (no $HOME
 # backups, no doctor exemption beyond the deployed check); never uses sudo,
-# and owns no shader logic (shaders belong only to lib/arch-video.sh).
+# and owns no mpv/shader logic (that pipeline was removed from the repo).
 # The stow-only past died to a live race: Hyprland recreates the user files
 # within milliseconds when missing, so no stow scan can own those paths.
 # Failures below are the desktop rewrite checklist, one line per violated
@@ -21,7 +21,7 @@ DESKTOP_LIB="${TEST_ARCH_REPO_ROOT}/lib/arch-desktop.sh"
 [[ -r ${DESKTOP_LIB} ]] || { printf 'SEAM PENDING: lib/arch-desktop.sh missing\n'; exit 3; }
 
 test_arch_make_sandbox
-for cmd in sudo stow patch jq Hyprland mpv pacman lspci systemctl; do
+for cmd in sudo stow patch jq Hyprland pacman lspci systemctl; do
   test_arch_stub_command "${cmd}"
 done
 
@@ -63,9 +63,9 @@ if sed 's/#.*//' "${DESKTOP_LIB}" | grep -n '\bsudo\b'; then
   contract_fail 'lib/arch-desktop.sh references sudo (desktop is user-scoped, never elevates)'
 fi
 
-# --- Shader logic belongs only to lib/arch-video.sh. ---
-if grep -nEi 'artcnn|mpv-shim|/shaders' "${DESKTOP_LIB}"; then
-  contract_fail 'lib/arch-desktop.sh owns shader logic (decided: shaders live only in lib/arch-video.sh)'
+# --- The mpv/shader pipeline was removed: no module may bring it back. ---
+if grep -rnEi 'artcnn|anime4k|mpv-shim|\bmpv\b|/shaders' "${TEST_ARCH_REPO_ROOT}/lib" "${TEST_ARCH_REPO_ROOT}/dot"; then
+  contract_fail 'mpv/shader logic is back in dot or lib/ (decided: the video step and its configs were removed)'
 fi
 
 # --- Home ownership: stow present, backup machinery absent. Copy exists ---

@@ -7,7 +7,7 @@ are excluded (Fedora unchanged by order). Every requested feature below
 lands somewhere: nothing was quietly omitted.
 
 Requested set: optimizations, conditional GPU support, conditional btrfs
-snapshots, greetd/sysc-greet, Hyprland/Caelestia, Limine, video configs,
+snapshots, greetd/sysc-greet, Hyprland/Caelestia, Limine,
 opt-in gaming — from minimal archinstall with existing Limine and no DE.
 
 ## Subsystem matrix
@@ -30,7 +30,7 @@ opt-in gaming — from minimal archinstall with existing Limine and no DE.
 | `dotfiles/caelestia/hypr-vars.lua`, `hypr-user.lua` | Adapted by desktop agent | `home-arch/.config/caelestia/`: overrides retargeted at current selection; NVIDIA env conditional on detected hardware; Arch user override carries the `hypr/input.lua` keyboard equivalent. |
 | `dotfiles/desktop/ghostty/config` | Per-distro sources | `home-arch/` Ghostty wins on Arch; `home-fedora/` carries the DMS config on Fedora; shared `home/` keeps only a forwarding alias, never stowed. |
 | `dotfiles/desktop/{gtk-3.0,gtk-4.0,environment.d}` + `hypr-keybinds` | Adapted by desktop agent | `home-arch/` verbatim carries; keybinds retargeted to `nvim in ghostty`. |
-| `dotfiles/desktop/mpv/*` + `modules/52-video.sh` | Split | Configs: desktop agent (`home-arch/`). Link + parse-probe mechanics: `lib/arch-video.sh` (package-derived shader dir, required-shader gate, real-dir refusal). `dot` runs video after desktop, so `mpv.conf` exists first. |
+| `dotfiles/desktop/mpv/*` + `modules/52-video.sh` | Dropped | The mpv player, the `mpv-shim-default-shaders` pack, the `home-arch/.config/mpv/` configs, `lib/arch-video.sh`, and the `video` setup step were removed on request. No module links shaders or ships an mpv config; the desktop contract test fails if any comes back. `yt-dlp` stays as a standalone downloader. |
 | `modules/55-limine.sh` + `etc/limine/appearance.conf` | Adapted | `lib/arch-limine.sh` + `system/arch/limine/appearance.conf`: every candidate config themed with marker block + entry-count guard + one backup, FAT-safe staging, ESP ro→rw trap, loader auth, vfat check, conditional `Limine` entry. Entries never removed; archinstall entry kept; BIOS skips firmware registration. |
 | `distros/arch/check.sh` | Patterns, not the script | Each module's `*_verify` plus `dot arch-check` (read-only, no elevation). `doctor` keeps user-space checks plus overlay-aware symlink verification. |
 | `lib/{common,engine,menu}.sh`, `catalogue.sh`, `bootstrap.sh`, `install.sh` | Excluded | `dot` already owns equivalents (sudo refresher, batched `-Syu`, idempotent init). No second installer framework; no `curl|bash` bootstrap. |

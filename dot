@@ -60,7 +60,7 @@ dot — install packages and link dotfiles on Arch and Fedora.
   ./dot arch-check [--only step,...]
                              verify Arch provisioning without changing anything
 
-Arch steps for --only: system gpu gaming snapshots desktop greeter video limine.
+Arch steps for --only: system gpu gaming snapshots desktop greeter limine.
 On Arch, ./dot init links user files (shared plus overlay); ./dot arch-setup
 provisions the system afterwards. Fedora has no arch commands.
 
@@ -1215,7 +1215,7 @@ cmd_benchmark_shell() {
 # Canonical arch-setup/arch-check step order. Greeter runs after desktop
 # verification in the same run (see arch_require_desktop_verified); Limine
 # runs last, after the system it boots is stable.
-ARCH_SETUP_STEPS=(system gpu gaming snapshots desktop greeter video limine)
+ARCH_SETUP_STEPS=(system gpu gaming snapshots desktop greeter limine)
 
 # Source one Arch provisioning module. Sourcing is side-effect free
 # (definitions only), so arch-check stays non-mutating.
@@ -1246,7 +1246,6 @@ arch_load_modules() {
   arch_load_module arch-snapshots.sh
   arch_load_module arch-greeter.sh
   arch_load_module arch-limine.sh
-  arch_load_module arch-video.sh
 }
 
 # Source the desktop integration or fail loudly: complete arch-setup has no
@@ -1440,7 +1439,6 @@ cmd_arch_setup() {
         arch_require_desktop_verified
         arch_greeter_setup "${replace_dm}"
         ;;
-      video) arch_video_setup ;;
       limine) arch_limine_setup ;;
     esac
   done
@@ -1504,7 +1502,6 @@ cmd_arch_check() {
         fi
         ;;
       greeter) arch_greeter_verify || failed=1 ;;
-      video) arch_video_verify || failed=1 ;;
       limine) arch_limine_verify || failed=1 ;;
     esac
   done
