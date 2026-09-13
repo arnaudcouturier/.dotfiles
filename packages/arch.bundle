@@ -49,7 +49,6 @@ npm-scripts "@opencode/cli" # OpenCode (binary opencode; postinstall fetches the
 
 # Applications from the official repositories
 repo "github-cli" # GitHub CLI
-repo "obsidian" # Obsidian notes (packaged here; Fedora uses the Flathub build)
 repo "qbittorrent" # BitTorrent client
 repo "mullvad-vpn" # Mullvad VPN client
 repo "tailscale" # mesh VPN
@@ -194,3 +193,4 @@ aur "qtengine" # Qt platform theme named by Caelestia configuration
 aur "darkly-bin" # widget style named by Caelestia Qt configuration
 
 # herdr is installed by dot itself, using its vendor's installer.
+appimage "Obsidian" "https://github.com/obsidianmd/obsidian-releases/releases/download/v1.13.7/Obsidian-1.13.7.AppImage" # Obsidian notes (AppImage vendor build; replaces the repo package)
