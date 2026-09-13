@@ -208,6 +208,71 @@ npm_entry_name() {
   fi
 }
 
+# npm globals live in the user-owned prefix (~/.local), never the system one
+# (/usr): a system prefix needs sudo for every install and runs postinstalls
+# as root, which leaves opencode's fetched binary unusable for the user.
+# Idempotent; every npm install path runs through here, so init, update,
+# arch-setup, and `package add` all converge without root.
+ensure_npm_user_prefix() {
+  require_command npm
+  local want="${HOME}/.local" have
+  have="$(npm config get prefix 2>/dev/null || true)"
+  if [[ ${have} != "${want}" ]]; then
+    log_step "Setting npm global prefix to ${want} (user-owned, no sudo)"
+    npm config set prefix "${want}" || die 'Failed to set the npm global prefix.'
+  fi
+  mkdir -p -- "${want}/bin"
+  # fish already puts ~/.local/bin on PATH; non-interactive callers need it.
+  export PATH="${want}/bin:${PATH}"
+}
+
+# Re-run an npm-scripts entry's install scripts when its binary is still the
+# scripts-disabled stub ("postinstall script was not run"). npm skips scripts
+# for an already-installed latest, so a stub left by an earlier
+# --ignore-scripts (or default-deny) install survives updates until its
+# scripts run. Only the stub marker triggers a rebuild; any other failure is
+# left alone, since not every CLI supports --version.
+npm_scripts_repair_stub() {
+  local spec=$1 pkg pkgdir bindir binname output repaired=0
+  pkg="$(npm_entry_name "${spec}")"
+  pkgdir="$(npm root -g 2>/dev/null)/${pkg}" || return 0
+  [[ -r ${pkgdir}/package.json ]] || return 0
+  bindir="$(npm config get prefix 2>/dev/null)/bin"
+  [[ -n ${bindir} ]] || return 0
+  while IFS= read -r binname; do
+    [[ -n ${binname} ]] || continue
+    [[ -x ${bindir}/${binname} ]] || continue
+    output="$("${bindir}/${binname}" --version 2>&1 || true)"
+    grep -Fq 'postinstall script was not run' <<<"${output}" || continue
+    log_warn "${binname} is still the scripts-disabled stub; re-running ${pkg}'s install scripts as the user."
+    npm rebuild -g --allow-scripts="${pkg}" "${pkg}" \
+      || die "Failed to rebuild ${pkg}; reinstall by hand: npm install -g --allow-scripts=${pkg} ${spec}"
+    repaired=1
+  done < <(node -e 'const fs=require("fs"); const p=JSON.parse(fs.readFileSync(process.argv[1],"utf8")); const b=p.bin||{}; if (typeof b === "string") { console.log(process.argv[2]); } else { for (const k of Object.keys(b)) console.log(k); }' "${pkgdir}/package.json" "${pkg##*/}" 2>/dev/null || true)
+  ((repaired == 0)) || log_ok "${pkg} install scripts re-ran."
+}
+
+# One-time migration off the old root-owned system prefix: any bundle npm
+# entry still installed under /usr/lib/node_modules is uninstalled there, so
+# its /usr/bin link stops shadowing the user install. The --prefix pins the
+# removal at the system tree no matter how sudo resolves HOME (a bare sudo
+# npm call could otherwise read the user's ~/.npmrc and hit ~/.local).
+# Runs under the caller's elevation; a machine with nothing stale stays
+# silent. Called once per batch install, before the user installs below.
+migrate_npm_root_to_user() {
+  local entry verb name url pkg
+  for entry in "${BUNDLE_ENTRIES[@]}"; do
+    read -r verb name url <<<"${entry}"
+    case "${verb}" in npm | npm-scripts) ;; *) continue ;; esac
+    pkg="$(npm_entry_name "${name}")"
+    if [[ -e /usr/lib/node_modules/${pkg} ]]; then
+      log_step "Removing root-owned global ${pkg} (the user prefix replaces it)"
+      sudo npm uninstall -g --prefix=/usr "${pkg}" \
+        || log_warn "Could not remove root-owned ${pkg}; remove it by hand: sudo npm uninstall -g --prefix=/usr ${pkg}"
+    fi
+  done
+}
+
 appimage_path() { printf '%s/%s\n' "${APPIMAGE_DIR}" "$(basename -- "$1")"; }
 
 appimage_desktop() {
@@ -359,8 +424,10 @@ pkg_install() {
     npm)
       # --ignore-scripts is pi's documented supply-chain posture; it applies
       # to every npm entry. The npm-scripts verb below is the one exemption.
+      # User-owned prefix (~/.local): no sudo, install runs as the user.
       require_command npm
-      sudo npm install -g --ignore-scripts "${name}"
+      ensure_npm_user_prefix
+      npm install -g --ignore-scripts "${name}"
       ;;
     npm-scripts)
       # A package whose postinstall does the actual install — it fetches the
@@ -368,9 +435,13 @@ pkg_install() {
       # run. Filed under its own verb so the exemption is one grep away.
       # npm 12 additionally gates scripts behind allowScripts (default deny),
       # so the entry's own package — tag stripped — is allow-listed.
+      # User-owned prefix: the postinstall fetches the binary as the user,
+      # never root.
       require_command npm
-      log_warn "Running ${name}'s own install scripts as root: this entry is exempt from --ignore-scripts."
-      sudo npm install -g --allow-scripts="$(npm_entry_name "${name}")" "${name}"
+      ensure_npm_user_prefix
+      log_info "Running ${name}'s own install scripts (exempt from --ignore-scripts)."
+      npm install -g --allow-scripts="$(npm_entry_name "${name}")" "${name}"
+      npm_scripts_repair_stub "${name}"
       ;;
     appimage) appimage_install "${name}" "${url}" ;;
   esac
@@ -390,7 +461,15 @@ pkg_remove() {
     aur) yay -Rns --noconfirm -- "${name}" || log_warn "yay could not remove ${name}." ;;
     rpm) sudo dnf remove -y "${name}" || log_warn "dnf could not remove ${name}." ;;
     flatpak) sudo flatpak uninstall -y "${name}" || log_warn "flatpak could not remove ${name}." ;;
-    npm | npm-scripts) sudo npm uninstall -g "$(npm_entry_name "${name}")" || log_warn "npm could not remove ${name}." ;;
+    npm | npm-scripts)
+      local pkg
+      pkg="$(npm_entry_name "${name}")"
+      npm uninstall -g "${pkg}" || log_warn "npm could not remove ${name}."
+      # Sweep a stale root-owned copy from the pre-user-prefix era, if any.
+      if [[ -e /usr/lib/node_modules/${pkg} ]]; then
+        sudo npm uninstall -g --prefix=/usr "${pkg}" || log_warn "npm could not remove root-owned ${name}."
+      fi
+      ;;
     appimage) rm -f -- "$(appimage_path "${url}")" "$(appimage_desktop "${name}")" ;;
     repofile) log_warn "The repository from ${name} stays configured; drop its file from /etc/yum.repos.d if unwanted." ;;
     copr) log_warn "The COPR stays enabled; run: sudo dnf copr disable ${name}" ;;
@@ -486,6 +565,11 @@ install_packages() {
     log_warn 'AUR PKGBUILDs are user-produced. Review the changes shown by yay before approving.'
     yay -S --aur --needed "${aur_pkgs[@]}"
   fi
+  # User-owned npm prefix first, then sweep stale root-owned globals: the
+  # per-entry installs below run as the user and must win over /usr/bin.
+  # (The repo batch above already provided npm itself on a fresh machine.)
+  ensure_npm_user_prefix
+  migrate_npm_root_to_user
   # Everything else installs one entry at a time, in bundle order.
   for entry in "${BUNDLE_ENTRIES[@]}"; do
     read -r verb name url <<<"${entry}"
@@ -950,6 +1034,20 @@ cmd_doctor() {
   else
     log_error "Login shell is ${current:-none}, expected fish. Run ./dot init."
     failed=1
+  fi
+
+  log_step 'Checking npm global prefix'
+  if command -v npm >/dev/null 2>&1; then
+    local npm_prefix
+    npm_prefix="$(npm config get prefix 2>/dev/null || true)"
+    if [[ ${npm_prefix} == "${HOME}/.local" ]]; then
+      log_ok "npm global prefix is user-owned (${npm_prefix})."
+    else
+      log_error "npm global prefix is ${npm_prefix:-unknown}, expected ${HOME}/.local (no sudo). Run ./dot init."
+      failed=1
+    fi
+  else
+    log_info 'npm is not installed; skipping the prefix check.'
   fi
 
   log_step 'Checking bundle packages'

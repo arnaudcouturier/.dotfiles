@@ -37,7 +37,10 @@ checks each tree against its selected source; Fedora is otherwise unchanged.
   (it fetches the platform binary). Don't file an entry there to make an
   install quieter — only when the CLI is a stub without it. `npm-scripts`
   allow-lists only the entry's own package via `--allow-scripts` (npm 12
-  denies all scripts by default).
+  denies all scripts by default). Globals live in the user-owned `~/.local`
+  prefix, so installs and postinstalls run as the user, never root (no
+  `sudo npm install`); `init`/`update` converge the prefix and sweep stale
+  root-owned copies out of `/usr`.
 - **`rpm` and `appimage` entries carry an explicit name** because the URL does
   not reveal it — `ProtonMail-desktop-beta.rpm` installs as `proton-mail`, and
   Keeper's real dist tag is `1.fc37`. Read a name with

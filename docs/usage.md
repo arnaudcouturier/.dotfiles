@@ -95,15 +95,17 @@ The kernel module keeps building after install — wait a few minutes
 | `rpm "name" "URL"` | Fedora | pinned official RPM; name read from the package header |
 | `flatpak "app.id"` | Fedora | system-wide Flathub install; vendor-verified builds only |
 | `appimage "Name" "URL"` | both | pinned AppImage into `~/Applications` plus launcher |
-| `npm "package"` | both | global install, always `--ignore-scripts` |
-| `npm-scripts "package"` | both | exemption when the postinstall *is* the install (entry's own scripts allow-listed via `--allow-scripts`) |
+| `npm "package"` | both | user-global install into `~/.local` (no sudo), always `--ignore-scripts` |
+| `npm-scripts "package"` | both | exemption when the postinstall *is* the install (entry's own scripts allow-listed via `--allow-scripts`, run as the user) |
 
 Rules: names are never translated between distros; every Fedora entry is
 verified against its vendor before adding — never guessed from the Arch name.
 Prefer the route that brings updates (vendor repo > COPR > verified Flathub >
 pinned RPM > AppImage > npm) and `repo` over `aur`; npm is the vendor route for
 JS-only tools that no repo or AUR entry carries (pair it with `repo "npm"` on
-Arch). Flatpak entries need
+Arch). npm globals live in the user-owned `~/.local` prefix, so npm entries
+never use sudo; `init`/`update` converge the prefix and sweep stale
+root-owned copies out of `/usr`. Flatpak entries need
 `repo "flatpak"` in the bundle so the client installs first. Pinned `rpm` URLs
 are build-compared on every run, so a bumped URL — or a rolling `latest` one —
 updates on the next `./dot update`. A verb the current distro cannot use dies
