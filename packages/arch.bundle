@@ -67,6 +67,7 @@ aur "proton-mail-bin" # Proton Mail and Calendar (the source build's sharp
                       # repack of Proton's own build)
 aur "equibop-git" # Equibop Discord client, git build tracking Equicord upstream (provides/conflicts equibop, so exactly one client installs)
 aur "chatgpt-desktop" # ChatGPT desktop app (repack of OpenAI's Linux binary)
+aur "notion-app-electron" # Notion desktop client (unofficial Electron wrapper; no official Linux build)
 aur "spotify" # Spotify client, proprietary repack (upstream spotify component stays disabled; no spicetify theming)
 
 # Applications from the MEGA vendor repository (lib/arch-mega.sh configures
