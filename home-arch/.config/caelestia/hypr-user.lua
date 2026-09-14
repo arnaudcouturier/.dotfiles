@@ -39,10 +39,18 @@ hl.config({
         vrr = 3,
     },
 
+    -- Keyboard layouts: US + French (Canada). This file loads last, so it
+    -- overrides upstream hyprland/input.lua (upstream-owned, never edited).
     -- Caps Lock behavior, ported from the shared home/.config/hypr/input.lua
     -- (excluded on Arch so one file owns the option): keep Caps Lock and
-    -- the both-Shifts Caps Lock companion.
+    -- the both-Shifts Caps Lock companion. No grp: XKB toggles on purpose:
+    -- they fire on modifier subsets and collide with existing chords
+    -- (SUPER + ALT + Space, CTRL + SUPER + Space, ALT + SHIFT + Tab), so
+    -- layout switching lives on one Hyprland bind (ALT + Space, see the
+    -- live ~/.config/caelestia/hypr-user.lua; SUPER + Space is the
+    -- Caelestia launcher and must stay free).
     input = {
+        kb_layout = "us,ca",
         kb_options = "shift:both_capslock_cancel",
     },
 })

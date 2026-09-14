@@ -144,6 +144,7 @@ load_descriptions() {
 0|SUPER + N|Toggle shell sidebar
 0|SUPER + B|Show all shell panels
 0|SUPER + K|Show this keybind cheatsheet
+0|ALT + Space|Switch keyboard layout (US / French Canada)
 0|CTRL + ALT + Delete|Open shell session menu
 0|CTRL + ALT + C|Clear shell notifications
 0|SUPER + L|Lock screen
