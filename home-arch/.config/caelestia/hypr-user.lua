@@ -46,9 +46,8 @@ hl.config({
     -- the both-Shifts Caps Lock companion. No grp: XKB toggles on purpose:
     -- they fire on modifier subsets and collide with existing chords
     -- (SUPER + ALT + Space, CTRL + SUPER + Space, ALT + SHIFT + Tab), so
-    -- layout switching lives on one Hyprland bind (ALT + Space, see the
-    -- live ~/.config/caelestia/hypr-user.lua; SUPER + Space is the
-    -- Caelestia launcher and must stay free).
+    -- layout switching lives on one Hyprland bind (ALT + Space below;
+    -- SUPER + Space is the Caelestia launcher and must stay free).
     input = {
         kb_layout = "us,ca",
         kb_options = "shift:both_capslock_cancel",
@@ -60,6 +59,27 @@ hl.config({
 -- The absolute path avoids depending on ~/.local/bin being in the PATH that
 -- Hyprland hands to exec.
 hl.bind("SUPER + K", hl.dsp.exec_cmd(os.getenv("HOME") .. "/.local/bin/hypr-keybinds"))
+
+-- ALT + Space cycles every keyboard between US and French (Canada) and
+-- notifies with the resulting main-keyboard layout. Verified free via
+-- `hyprctl binds` and `hyprctl globalshortcuts`. Do NOT move this to
+-- SUPER + Space: that opens the Caelestia app launcher (shell-level) and a
+-- Hyprland bind there steals it. XKB grp: toggles are out for the same
+-- reason: they fire on modifier subsets and collide with existing chords
+-- (SUPER + ALT + Space, CTRL + SUPER + Space, ALT + SHIFT + Tab).
+-- Absolute paths like the binds above.
+-- Label for ALT + Space lives in home-arch/.local/bin/hypr-keybinds (DESC).
+hl.bind(
+    "ALT + Space",
+    hl.dsp.exec_cmd(
+        "/bin/sh -c '" ..
+        "/usr/bin/hyprctl devices -j | /usr/bin/jq -r \".keyboards[].name\" | while IFS= read -r dev; do " ..
+        "/usr/bin/hyprctl switchxkblayout \"$dev\" next; done; " ..
+        "/usr/bin/notify-send --urgency=low --transient --expire-time=1500 " ..
+        "--app-name=Keyboard --icon=input-keyboard-symbolic " ..
+        "\"Keyboard: $(/usr/bin/hyprctl devices -j | /usr/bin/jq -r \"[.keyboards[] | select(.main)] | .[0].active_keymap\")\"'"
+    )
+)
 
 -- Gammastep has no way to query a running daemon, so the toggle derives the
 -- state from the process itself: when the daemon is running the night light
