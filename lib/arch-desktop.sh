@@ -496,6 +496,9 @@ arch_desktop_configure_caelestia() {
 # file is deployed as a symlink resolving into the overlay source (Stow
 # ownership) and every DEPLOYED user file exists as a real, configured file
 # (legacy symlinks and compositor placeholders fail: rerun install).
+# Copy-once preserves user content, so a template update leaves a stale user
+# file behind; the hypr-user.lua managed-key check below fails loudly with
+# the manual-merge hint instead of passing green on stale content.
 # Never writes, no sudo.
 arch_desktop_verify_overlay() {
   arch_desktop_require_caller_interface || return 1
@@ -528,6 +531,19 @@ arch_desktop_verify_overlay() {
       if [[ -z ${content} || ${content} == 'return {}' ]]; then
         log_error "arch-desktop: unconfigured compositor placeholder: ${target}; rerun install."
         failed=1
+      # Managed-key drift: copy-once keeps the user's monitor block, so a
+      # template update (layouts, binds) never reaches an existing file.
+      # Grep the two load-bearing strings, not the full block: tabs vs
+      # spaces differ between template and deployed file by design.
+      elif [[ ${rel} == '.config/caelestia/hypr-user.lua' ]]; then
+        if ! grep -Fq 'kb_layout = "us,ca"' "${target}"; then
+          log_error "arch-desktop: ${target} lacks kb_layout us,ca; template updates need a manual merge."
+          failed=1
+        fi
+        if ! grep -Fq 'switchxkblayout' "${target}"; then
+          log_error "arch-desktop: ${target} lacks the ALT + Space layout toggle; template updates need a manual merge."
+          failed=1
+        fi
       fi
     fi
   done < <(arch_desktop_deployed_relpaths) || true

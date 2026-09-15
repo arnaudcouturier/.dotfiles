@@ -102,6 +102,16 @@ bash -n -- "${OVERLAY}/.local/bin/hypr-opacity-toggle" \
 grep -Fq 'Toggle window transparency' "${OVERLAY}/.local/bin/hypr-keybinds" \
   || scope_fail 'keybind cheatsheet lacks the transparency toggle row'
 
+# --- Keyboard layouts: US + French (Canada) on ALT + Space, labelled. ---
+grep -Fq 'kb_layout = "us,ca"' "${OVERLAY}/.config/caelestia/hypr-user.lua" \
+  || scope_fail 'overlay hypr-user.lua lacks kb_layout us,ca (US / French Canada)'
+grep -Fq 'ALT + Space' "${OVERLAY}/.config/caelestia/hypr-user.lua" \
+  || scope_fail 'overlay hypr-user.lua lacks the ALT + Space layout toggle'
+grep -Fq 'switchxkblayout' "${OVERLAY}/.config/caelestia/hypr-user.lua" \
+  || scope_fail 'overlay layout toggle does not call switchxkblayout'
+grep -Fq 'Switch keyboard layout' "${OVERLAY}/.local/bin/hypr-keybinds" \
+  || scope_fail 'keybind cheatsheet lacks the layout toggle row'
+
 if ((failures > 0)); then
   printf '%d overlay-scope violation(s).\n' "${failures}" >&2
   exit 1

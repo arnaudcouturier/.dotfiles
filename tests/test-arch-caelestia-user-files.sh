@@ -134,6 +134,26 @@ set -e
 arch_desktop_deploy_user_files >/dev/null
 arch_desktop_verify_overlay >/dev/null
 
+# --- Verify: stale user file (pre-layout template + monitor block) fails. ---
+# Copy-once keeps user content, so an old file survives template updates;
+# verify must fail loudly with the manual-merge hint, not pass green.
+printf -- '-- active monitor block\n' >"${TEST_ARCH_HOME}/${USER_A}"
+grep -v -e 'kb_layout = "us,ca"' -e 'switchxkblayout' -- "${OVERLAY}/${USER_A}" >>"${TEST_ARCH_HOME}/${USER_A}"
+! grep -Fq 'kb_layout = "us,ca"' "${TEST_ARCH_HOME}/${USER_A}" \
+  || test_arch_die 'stale fixture still carries kb_layout'
+! grep -Fq 'switchxkblayout' "${TEST_ARCH_HOME}/${USER_A}" \
+  || test_arch_die 'stale fixture still carries switchxkblayout'
+set +e
+stale_out="$(arch_desktop_verify_overlay 2>&1)"
+stale_status=$?
+set -e
+((stale_status != 0)) || test_arch_die 'verify passed on a stale user file without the layout toggle'
+[[ ${stale_out} == *'manual merge'* ]] \
+  || test_arch_die 'verify did not hint manual merge on stale content'
+rm -f -- "${TEST_ARCH_HOME}/${USER_A}"
+arch_desktop_deploy_user_files >/dev/null
+arch_desktop_verify_overlay >/dev/null
+
 # --- dot overlay stow: preserves real user files, lands the stowed set. ---
 HOME4="${TEST_ARCH_SANDBOX}/home4"
 mkdir -p -- "${HOME4}/.config/caelestia"
