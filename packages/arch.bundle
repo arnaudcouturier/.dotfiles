@@ -188,5 +188,6 @@ aur "papirus-folders" # folder recoloring for the Papirus icon theme
 aur "qtengine" # Qt platform theme named by Caelestia configuration
 aur "darkly-bin" # widget style named by Caelestia Qt configuration
 
-# herdr is installed by dot itself, using its vendor's installer.
-appimage "Obsidian" "https://github.com/obsidianmd/obsidian-releases/releases/download/v1.13.7/Obsidian-1.13.7.AppImage" # Obsidian notes (AppImage vendor build; replaces the repo package)
+# herdr is installed by dot itself, using its vendor's installer. It ships a
+# native binary today; bun and wl-clipboard were removed with the old
+# annotate runtime.
