@@ -277,7 +277,7 @@ appimage_desktop() {
 }
 
 # App name to default to when `dot package add` is given only a URL:
-# Obsidian-1.13.7.AppImage -> Obsidian. The bundle records it explicitly, so a
+# Keeper-18.6.1.AppImage -> Keeper. The bundle records it explicitly, so a
 # bad guess is one word to fix by hand.
 appimage_app() {
   local file

@@ -17,7 +17,6 @@ repo "eza" # modern ls replacement
 repo "zoxide" # smarter cd
 repo "fzf" # fuzzy finder
 repo "fd" # modern find replacement used by fzf
-repo "ripgrep" # fast code search
 repo "bat" # cat with syntax highlighting
 repo "glow" # terminal markdown reader
 repo "direnv" # per-directory env (hooked in fish config, idle without .envrc)
@@ -31,9 +30,9 @@ repo "base-devel" # makepkg toolchain for AUR builds; no-op if already present
 repo "fastfetch" # minimalist system info
 repo "git" # version control (explicit so the bundle tracks and doctor checks it)
 
-# Herdr Annotate (plannotator/herdr-annotate plugin; document review bundles its own plannotator-tui binary)
-repo "bun" # JavaScript runtime for annotate's capture/manage actions
-repo "wl-clipboard" # clipboard for annotate's copy actions (wl-copy/wl-paste on Wayland)
+# herdr is installed by dot itself, using its vendor's installer. It ships a
+# native binary today; bun and wl-clipboard were removed with the old
+# annotate runtime.
 
 # Obsidian agent skills (home/.agents/skills/): the CLIs the defuddle and knap
 # skills invoke. Both publish only to npm — the AUR's defuddle is flagged out

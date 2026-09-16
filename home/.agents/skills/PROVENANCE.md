@@ -35,12 +35,11 @@ Deliberately excluded: coding-standards (TypeScript/Effect) and
 cloudflare-composition-root (Cloudflare Workers) — not our stack.
 
 Caveats: computer-use-mcp assumes macOS Helium (`net.imput.helium`) and an
-`open-computer-use` MCP server; plannotator-tui reviews run through the
-herdr-annotate plugin (home/.config/herdr/plugins.txt), which bundles its own
-plannotator-tui binary — the skill copy here is synced to that plugin and needs
-bun plus wl-clipboard from the bundles; workday-training needs
+`open-computer-use` MCP server; workday-training needs
 global `agent-browser` + authenticated Chromium; recipe-diagrams needs
 Python 3 + ImageMagick. All are inert markdown until invoked.
+The plannotator-tui skill was removed with the Herdr Annotate plugin (2026-09-16);
+its agent-facing copy ships with the plugin itself if you reinstall it.
 
 ## kepano obsidian-skills (2026-09-10, from https://github.com/kepano/obsidian-skills at 8ccef29)
 

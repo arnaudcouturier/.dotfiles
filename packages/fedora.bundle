@@ -20,7 +20,6 @@ repo "eza" # modern ls replacement
 repo "zoxide" # smarter cd
 repo "fzf" # fuzzy finder
 repo "fd-find" # modern find replacement used by fzf (binary is /usr/bin/fd)
-repo "ripgrep" # fast code search
 repo "bat" # cat with syntax highlighting
 repo "glow" # terminal markdown reader
 repo "direnv" # per-directory env (hooked in fish config, idle without .envrc)
@@ -38,7 +37,6 @@ repo "fastfetch" # minimalist system info
 repo "gh" # GitHub CLI (Arch name: github-cli)
 repo "neovim" # Neovim editor (the LazyVim starter config lives in home/.config/nvim)
 repo "qbittorrent" # BitTorrent client
-repo "wl-clipboard" # clipboard for Herdr Annotate's copy actions (wl-copy/wl-paste on Wayland)
 
 # Applications from official vendor repositories
 repofile "https://pkgs.tailscale.com/stable/fedora/tailscale.repo" # Tailscale's official repo
@@ -52,13 +50,11 @@ repo "brave-origin" # Brave Origin, the system's Chromium-based browser
 # header and compares it against the installed one on every run, so a bumped
 # URL — or a rolling "latest" one — updates on the next ./dot update
 rpm "keeperpasswordmanager" "https://download.keepersecurity.com/desktop_electron/Linux/repo/rpm/keeperpasswordmanager-18.6.1-1.x86_64.rpm" # Keeper password manager (vendor RPM repo ships no .repo file)
-rpm "proton-mail" "https://proton.me/download/mail/linux/1.13.4/ProtonMail-desktop-beta.rpm" # Proton Mail and Calendar (stable channel; the file name says beta, the channel does not)
 rpm "equibop" "https://github.com/Equicord/Equibop/releases/download/v3.3.0/equibop-3.3.0.x86_64.rpm" # Equibop Discord client, from the Equicord project's own release
 rpm "chatgpt" "https://persistent.oaistatic.com/codex-app-prod/linux/rpm/latest/chatgpt.x86_64.rpm" # ChatGPT desktop, OpenAI's own RPM — a rolling "latest" build whose %post also sets up OpenAI's official repo, so later updates flow through dnf
 
 # Flathub — vendor-verified builds that update through flatpak
 repo "flatpak" # the flatpak client itself (Workstation ships it; a fresh install may not)
-flatpak "md.obsidian.Obsidian" # Obsidian notes (Flathub build, verified by the Obsidian team)
 flatpak "com.spotify.Client" # Spotify (Flathub build, verified by Spotify)
 
 # AI agent CLIs

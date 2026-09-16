@@ -34,7 +34,9 @@ test_arch_assert_contains "${SHARED}/.config/fish/config.fish" "zoxide init fish
 test_arch_assert_contains "${SHARED}/.config/fish/config.fish" "abbr gd 'git diff'" 'shared abbrs preserved'
 test_arch_assert_contains "${SHARED}/.config/fish/config.fish" "abbr l 'ls -l'" 'shared l variants preserved (not upstream ls)'
 test_arch_assert_contains "${SHARED}/.config/fish/completions/dot.fish" "complete -c dot" 'shared completions preserved'
-test_arch_assert_contains "${SHARED}/.config/fish/conf.d/ripgrep.fish" "RIPGREP_CONFIG_PATH" 'shared ripgrep hook preserved'
+if [[ -f ${SHARED}/.config/fish/conf.d/ripgrep.fish ]]; then
+  test_arch_die 'ripgrep hook must stay removed (package retired from the bundles)'
+fi
 [[ ! -e ${SHARED}/.config/starship.toml ]] || test_arch_die 'shared Starship config was restored'
 [[ -f ${SHARED}/.config/fish/functions/fish_greeting.fish ]] \
   || test_arch_die 'shared fish_greeting missing'

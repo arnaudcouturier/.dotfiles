@@ -104,7 +104,7 @@ Sources: [Noctalia installation][n-install], [Umbriel installation][u-install], 
 
 Do not enable a large Hyprland COPR just because it also contains Noctalia snapshots. Prefer the Fedora stable shell, Terra compositor and Terra stable greeter, subject to their compatibility. Do not build from source in `dot init` as an unannounced fallback.
 
-Additional application dependencies must be resolved explicitly: Ghostty, a file manager for SUPER+E, an audio GUI if retaining Ctrl+Alt+V, and any screenshot/recording/color-picker helper that survives the native-first design. The current Fedora bundle already supplies Brave Origin, Neovim, wl-clipboard, Spotify and Equibop through its existing vendor-verified routes. Preserve those routes.
+Additional application dependencies must be resolved explicitly: Ghostty, a file manager for SUPER+E, an audio GUI if retaining Ctrl+Alt+V, and any screenshot/recording/color-picker helper that survives the native-first design. The current Fedora bundle already supplies Brave Origin, Neovim, Spotify and Equibop through its existing vendor-verified routes. Preserve those routes.
 
 ### Terra bootstrap and update policy
 

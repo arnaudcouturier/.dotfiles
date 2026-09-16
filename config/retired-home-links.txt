@@ -1,4 +1,7 @@
 # Former stow targets: remove only symlinks into this checkout.
+.config/fish/conf.d/ripgrep.fish
+.config/ripgrep
+.agents/skills/plannotator-tui
 .agents/skills/PROVENANCE.md
 .agents/skills/ask-matt/PHASE-BOUNDARIES.md
 .agents/skills/ask-matt/SKILL.md

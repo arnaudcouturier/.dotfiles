@@ -1,12 +1,1 @@
-# Herdr defaults, with only Plannotator's documented review shortcuts.
-[[keys.command]]
-key = "prefix+o"
-type = "plugin_action"
-command = "annotate.open"
-description = "Review documents in this folder"
-
-[[keys.command]]
-key = "prefix+shift+o"
-type = "plugin_action"
-command = "annotate.last"
-description = "Review the agent's last reply"
+# Herdr runs on its packaged defaults.

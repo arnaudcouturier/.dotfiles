@@ -43,7 +43,8 @@ remains in the exclusion list only for legacy-link cleanup.
   `sudo npm install`); `init`/`update` converge the prefix and sweep stale
   root-owned copies out of `/usr`.
 - **`rpm` and `appimage` entries carry an explicit name** because the URL does
-  not reveal it — `ProtonMail-desktop-beta.rpm` installs as `proton-mail`, and
+  not reveal it — `keeperpasswordmanager-18.6.1-1.x86_64.rpm` installs as
+  `keeperpasswordmanager`, and
   Keeper's real dist tag is `1.fc37`. Read a name with
   `rpm -q --qf '%{NAME}' -p <URL>`.
 - **Arch installs run `pacman -Syu`.** Arch does not support installing into a
