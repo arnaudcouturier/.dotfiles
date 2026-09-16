@@ -85,7 +85,7 @@ Edit the repo, then run `./dot stow`:
 
 - Shared: [`home/`](home/) — Fish ([`config.fish`](home/.config/fish/config.fish)), Git, nvim, agent skills
 - Arch: [`home-arch/`](home-arch/) — monitors in [`hypr-user.lua`](home-arch/.config/caelestia/hypr-user.lua), night light in [`hypr-vars.lua`](home-arch/.config/caelestia/hypr-vars.lua) (`automaticNightLight`; <kbd>Super</kbd>+<kbd>Shift</kbd>+<kbd>N</kbd> toggles)
-- Fedora: [`home-fedora/`](home-fedora/) — Ghostty theme, hypr input
+- Fedora: [`home-fedora/`](home-fedora/) — standalone Ghostty preferences (no Hyprland configuration)
 
 On Arch, `~/.config/hypr/` is generated output; edit the sources above.
 

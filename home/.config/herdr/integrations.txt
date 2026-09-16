@@ -1,9 +1,1 @@
-# Herdr agent integrations installed by `dot init` and refreshed by `dot update`.
-# One `herdr integration install` target per line.
-pi
-claude
-codex
-opencode
-grok
-hermes
-cursor
+# No automatic agent integrations: keep Herdr and Pi vanilla.

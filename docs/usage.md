@@ -28,10 +28,20 @@ recipes are [`packages/arch.bundle`](../packages/arch.bundle) and
 Herdr plugins are one `owner/repo` per line in `home/.config/herdr/plugins.txt`;
 `init`/`update` sync them and reload the live server when one runs.
 
-Herdr agent integrations are one `herdr integration install` target per line
-in `home/.config/herdr/integrations.txt`; `init`/`update` sync them. An
-integration whose agent is not installed yet is skipped with a warning —
-re-run `init` after installing the agent.
+Herdr uses defaults except Plannotator's two document-review shortcuts.
+The integration list is empty: no agent hooks are installed automatically,
+including into Pi. Pi is installed bare, without a managed extension workspace.
+Removing entries does not uninstall previously installed Herdr plugins or
+integrations; use `herdr plugin uninstall` / `herdr integration uninstall`
+to retire those on an existing machine after reviewing its installed state.
+
+Skills are installed globally by `init`/`update` using `npx skills` (user-owned,
+never sudo). Stow skips `home/.agents/skills/`; this is the curated source set,
+not the deployment mechanism. Local skills install first, then Matt Pocock's
+upstream collection and Herdr's official skill override matching names. The
+CLI version and agent targets live in `lib/shared-home.sh`. OpenCode and Codex
+use the universal skill directory; the CLI also links Claude Code and Pi.
+Plain `dot stow` does not download skills; use `init`/`update` for a full refresh.
 
 ## Arch provisioning
 
@@ -110,9 +120,12 @@ into a partially upgraded system.
 - `dot` — the CLI. Arch provisioning lives in `lib/arch-*.sh`, sourced lazily
   for Arch commands only; `system/arch/` holds the `/etc` and `/boot` templates
   (the one place that keeps a `.dotfiles-backup`).
-- `home/` — shared configs, stowed everywhere except two forwarding aliases
-  (Ghostty config, hypr input) that shared stow always skips.
-- `home-fedora/` — Fedora's real copies of those two paths, stowed on Fedora only.
+- `home/` — shared configs; stow skips the Ghostty forwarding alias, skills,
+  and the retired Pi workspace. `config/retired-home-links.txt` lists obsolete
+  stow links to remove, only when they resolve into this checkout. Local files
+  and foreign symlinks are preserved.
+- `home-fedora/` — Fedora's standalone Ghostty configuration. Hyprland input
+  has been retired; Arch's compositor-owned configuration is unchanged.
 - `home-arch/` — Arch desktop overlay, stowed on Arch only, except the two
   compositor-owned user files (`hypr-user.lua`, `hypr-vars.lua`), which
   deploy once as real files you may edit freely.

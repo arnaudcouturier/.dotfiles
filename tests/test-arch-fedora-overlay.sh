@@ -53,12 +53,14 @@ stow_dotfiles >/dev/null
 stow_fedora_overlay >/dev/null
 test_arch_assert_eq "${FEDORA}/.config/ghostty/config" \
   "$(realpath -m -- "${LEGACY}/.config/ghostty/config")" 'legacy ghostty chain converges onto home-fedora/'
-test_arch_assert_eq "${FEDORA}/.config/hypr/input.lua" \
-  "$(realpath -m -- "${LEGACY}/.config/hypr/input.lua")" 'legacy input.lua chain converges onto home-fedora/'
+[[ ! -e ${LEGACY}/.config/hypr/input.lua && ! -L ${LEGACY}/.config/hypr/input.lua ]] \
+  || test_arch_die 'retired legacy input.lua link survived'
 cmp -s -- "${FEDORA}/.config/ghostty/config" "${LEGACY}/.config/ghostty/config" \
   || test_arch_die 'legacy ghostty content changed in transit'
-cmp -s -- "${FEDORA}/.config/hypr/input.lua" "${LEGACY}/.config/hypr/input.lua" \
-  || test_arch_die 'legacy input.lua content changed in transit'
+# The later Fedora-overlay target is also retired, not just the original shared link.
+ln -s -- "${FEDORA}/.config/hypr/input.lua" "${LEGACY}/.config/hypr/input.lua"
+stow_dotfiles >/dev/null
+[[ ! -L ${LEGACY}/.config/hypr/input.lua ]] || test_arch_die 'retired Fedora link survived'
 
 # --- Current: fresh shared plus overlay stow lands both real copies. ---
 FRESH="${TEST_ARCH_SANDBOX}/fresh-home"
@@ -72,17 +74,17 @@ stow_dotfiles >/dev/null
 stow_fedora_overlay >/dev/null
 test_arch_assert_eq "${FEDORA}/.config/ghostty/config" \
   "$(realpath -m -- "${FRESH}/.config/ghostty/config")" 'fresh ghostty resolves to home-fedora/'
-test_arch_assert_eq "${FEDORA}/.config/hypr/input.lua" \
-  "$(realpath -m -- "${FRESH}/.config/hypr/input.lua")" 'fresh input.lua resolves to home-fedora/'
+[[ ! -e ${FRESH}/.config/hypr/input.lua && ! -L ${FRESH}/.config/hypr/input.lua ]] \
+  || test_arch_die 'fresh Fedora deployment installed retired Hyprland input'
 
 # --- Repeat: rerunning both stows changes nothing, checksums hold. ---
 find "${FRESH}" -mindepth 1 | sort >"${TEST_ARCH_SANDBOX}/fresh-first.txt"
-sha256sum -- "${FRESH}/.config/ghostty/config" "${FRESH}/.config/hypr/input.lua" \
+sha256sum -- "${FRESH}/.config/ghostty/config" \
   >"${TEST_ARCH_SANDBOX}/fresh-sums-first.txt"
 stow_dotfiles >/dev/null
 stow_fedora_overlay >/dev/null
 find "${FRESH}" -mindepth 1 | sort >"${TEST_ARCH_SANDBOX}/fresh-second.txt"
-sha256sum -- "${FRESH}/.config/ghostty/config" "${FRESH}/.config/hypr/input.lua" \
+sha256sum -- "${FRESH}/.config/ghostty/config" \
   >"${TEST_ARCH_SANDBOX}/fresh-sums-second.txt"
 cmp -s -- "${TEST_ARCH_SANDBOX}/fresh-first.txt" "${TEST_ARCH_SANDBOX}/fresh-second.txt" \
   || test_arch_die 'repeat stow changed the deployed tree'

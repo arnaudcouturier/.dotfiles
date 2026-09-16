@@ -41,7 +41,7 @@ if cmp -s -- "${SHARED}/.config/ghostty/config" "${OVERLAY}/.config/ghostty/conf
 fi
 
 # --- home-fedora/ ships both aliases as real files, never aliases. ---
-for fedora_rel in .config/ghostty/config .config/hypr/input.lua; do
+for fedora_rel in .config/ghostty/config; do
   [[ -f ${FEDORA_TREE}/${fedora_rel} && ! -L ${FEDORA_TREE}/${fedora_rel} ]] \
     || scope_fail "home-fedora/${fedora_rel} is not a real file"
 done

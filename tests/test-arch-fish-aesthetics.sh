@@ -26,21 +26,19 @@ comm -12 \
 test_arch_assert_eq './.config/ghostty/config' "$(cat -- "${TEST_ARCH_SANDBOX}/collisions.txt")" 'aesthetic files must not shadow shared home/'
 
 # --- Shared shell functionality untouched (baseline preserved). ---
-test_arch_assert_contains "${SHARED}/.config/fish/config.fish" "starship init fish | source" 'shared starship hook preserved'
+if grep -q starship "${SHARED}/.config/fish/config.fish"; then
+  test_arch_die 'shared shell must use the Fish prompt, not Starship'
+fi
 test_arch_assert_contains "${SHARED}/.config/fish/config.fish" "direnv hook fish | source" 'shared direnv hook preserved'
 test_arch_assert_contains "${SHARED}/.config/fish/config.fish" "zoxide init fish --cmd cd | source" 'shared zoxide hook preserved'
 test_arch_assert_contains "${SHARED}/.config/fish/config.fish" "abbr gd 'git diff'" 'shared abbrs preserved'
 test_arch_assert_contains "${SHARED}/.config/fish/config.fish" "abbr l 'ls -l'" 'shared l variants preserved (not upstream ls)'
 test_arch_assert_contains "${SHARED}/.config/fish/completions/dot.fish" "complete -c dot" 'shared completions preserved'
 test_arch_assert_contains "${SHARED}/.config/fish/conf.d/ripgrep.fish" "RIPGREP_CONFIG_PATH" 'shared ripgrep hook preserved'
-test_arch_assert_contains "${SHARED}/.config/starship.toml" "command_timeout = 2000" 'shared starship timeout preserved'
-test_arch_assert_contains "${SHARED}/.config/starship.toml" '[package]' 'shared starship package section preserved'
+[[ ! -e ${SHARED}/.config/starship.toml ]] || test_arch_die 'shared Starship config was restored'
 [[ -f ${SHARED}/.config/fish/functions/fish_greeting.fish ]] \
   || test_arch_die 'shared fish_greeting missing'
-# Suppressed means no fastfetch invocation (the historical comment may name it).
-if sed 's/#.*//' "${SHARED}/.config/fish/functions/fish_greeting.fish" | grep -Fq 'fastfetch'; then
-  test_arch_die 'shared greeting must stay suppressed (no fastfetch call)'
-fi
+test_arch_assert_contains "${SHARED}/.config/fish/functions/fish_greeting.fish" 'type -q fastfetch' 'greeting guards optional fastfetch'
 
 # --- Overlay aesthetic sources exist and stay additive. ---
 for rel in .config/fish/conf.d/caelestia-sequences.fish .config/fish/conf.d/caelestia-greeting.fish \
@@ -114,8 +112,8 @@ fi
 # --- Fedora unaffected: shared skips aliases, Fedora tree owns its copies. ---
 [[ -f ${FEDORA_TREE}/.config/ghostty/config && ! -L ${FEDORA_TREE}/.config/ghostty/config ]] \
   || test_arch_die 'home-fedora ghostty must stay a real file'
-[[ -f ${FEDORA_TREE}/.config/hypr/input.lua && ! -L ${FEDORA_TREE}/.config/hypr/input.lua ]] \
-  || test_arch_die 'home-fedora input.lua must stay a real file'
+[[ ! -e ${FEDORA_TREE}/.config/hypr/input.lua ]] \
+  || test_arch_die 'Fedora Hyprland input must remain retired'
 if grep -rn 'STARSHIP_CONFIG\|caelestia' "${FEDORA_TREE}/" 2>/dev/null; then
   test_arch_die 'Fedora tree must not reference Caelestia aesthetics'
 fi

@@ -1,1 +1,0 @@
-../../../home-fedora/.config/hypr/input.lua

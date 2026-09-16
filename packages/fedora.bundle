@@ -16,8 +16,6 @@
 # arch.bundle, and `aur` is refused here.
 # Shell toolchain (dot init also makes fish the login shell)
 repo "fish" # friendly interactive shell
-copr "atim/starship" # the COPR starship's own README points Fedora users to
-repo "starship" # prompt (Fedora retired its rust-starship package)
 repo "eza" # modern ls replacement
 repo "zoxide" # smarter cd
 repo "fzf" # fuzzy finder
@@ -69,9 +67,7 @@ repo "nodejs22-npm-bin" # npm, paired with nodejs22-bin (the two own node and np
 npm "@earendil-works/pi-coding-agent" # pi coding agent CLI
 npm "@openai/codex" # OpenAI Codex CLI
 npm-scripts "@opencode/cli" # OpenCode (binary opencode; its postinstall fetches the platform binary, and without it the CLI is a stub that refuses to run)
-npm-scripts "bun" # JavaScript runtime for Herdr Annotate's capture/manage actions (oven-sh's npm build; its postinstall fetches the platform binary)
-# Obsidian agent skills (home/.agents/skills/): the CLIs the defuddle and knap
-# skills invoke; both are npm-only upstream.
+# Agent-skill CLIs (home/.agents/skills/): both are npm-only upstream.
 npm "defuddle" # clean web-page extraction for the defuddle skill (--ignore-scripts)
 npm "knap" # Markdown template renderer for the knap skill (--ignore-scripts)
 # Claude Code is installed by dot itself, and herdr on both distros: their

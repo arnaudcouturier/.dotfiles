@@ -142,8 +142,8 @@ stow_dotfiles >/dev/null
 stow_fedora_overlay >/dev/null
 test_arch_assert_eq "${TEST_ARCH_REPO_ROOT}/home-fedora/.config/ghostty/config" \
   "$(realpath -m -- "${HOME3}/.config/ghostty/config")" 'Fedora overlay provides ghostty'
-test_arch_assert_eq "${TEST_ARCH_REPO_ROOT}/home-fedora/.config/hypr/input.lua" \
-  "$(realpath -m -- "${HOME3}/.config/hypr/input.lua")" 'Fedora overlay provides input.lua'
+[[ ! -e ${HOME3}/.config/hypr/input.lua && ! -L ${HOME3}/.config/hypr/input.lua ]] \
+  || test_arch_die 'Fedora overlay restored retired Hyprland input'
 stow_arch_overlay >/dev/null
 [[ ! -e ${HOME3}/.config/gtk-3.0/settings.ini ]] \
   || test_arch_die 'Arch overlay stow deployed Arch files on Fedora'
