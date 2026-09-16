@@ -71,11 +71,6 @@ aur "claude-desktop" # Claude desktop app (repack of Anthropic's official Linux 
 aur "notion-app-electron" # Notion desktop client (unofficial Electron wrapper; no official Linux build)
 aur "spotify" # Spotify client, proprietary repack (upstream spotify component stays disabled; no spicetify theming)
 
-# Applications from the MEGA vendor repository (lib/arch-mega.sh configures
-# DEB_Arch_Extra before install; Thunar file manager integration)
-repo "megasync" # MEGA desktop file-sync client
-repo "thunar-megasync" # MEGA Thunar integration (matches the bundled file manager)
-
 # Arch desktop infrastructure (./dot arch-setup provisions these; Caelestia is
 # the Arch desktop, DMS stays Fedora). Infrastructure only: no archive browsers,
 # editors, chat clients, music, VMs, or toolchains beyond what the requested

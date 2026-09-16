@@ -61,15 +61,6 @@ Safety contracts:
   fresh host it reports what setup will add. After setup: reboot, then
   `arch-check` from a Hyprland session.
 
-MEGA (Arch only): when the parsed bundle requests `megasync`/`thunar-megasync`,
-`dot` configures MEGA's own `Arch_Extra` repo before install and verifies the
-vendor key (fingerprint `B01C 8118 8048 0C85 4C73 EC7E 1A66 4B78 7094 A482`).
-MEGA's `megasync` package rewrites that repo section from its `post_install`
-with a weaker signature policy, so `dot` re-asserts the pinned section after
-the install transaction; one `init`/`update`/`arch-setup` run is enough and a
-later `arch-check` stays green. Nothing MEGA exists on Fedora: no bundle
-lines, no repo, no key.
-
 ## Fedora notes
 
 Fedora system provisioning is out of scope apart from NVIDIA. Atomic/OSTree

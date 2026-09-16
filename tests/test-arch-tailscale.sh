@@ -30,8 +30,6 @@ chmod 755 -- "${pacman_stub}"
 set -- help
 source "${TEST_ARCH_REPO_ROOT}/dot" >/dev/null
 test_arch_arm_cleanup
-# MEGA convergence has its own transaction tests; keep the vendor seam inert.
-ensure_mega_vendor_repo() { :; }
 
 BUNDLE="${TEST_ARCH_REPO_ROOT}/packages/arch.bundle"
 SYSTEM_LIB="${TEST_ARCH_REPO_ROOT}/lib/arch-system.sh"
