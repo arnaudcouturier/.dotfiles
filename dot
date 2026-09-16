@@ -56,10 +56,16 @@ dot — install packages and link dotfiles on Arch and Fedora.
                              provision this Arch machine (Arch-only, idempotent repair)
   ./dot arch-check [--only step,...]
                              verify Arch provisioning without changing anything
+  ./dot fedora-setup [--only step,...]
+                             provision this Fedora machine (Fedora-only, opt-in gaming)
+  ./dot fedora-check [--only step,...]
+                             verify Fedora provisioning without changing anything
 
 Arch steps for --only: system gpu gaming snapshots desktop greeter limine.
+Fedora steps for --only: gaming.
 On Arch, ./dot init links user files (shared plus overlay); ./dot arch-setup
-provisions the system afterwards. Fedora has no arch commands.
+provisions the system afterwards. On Fedora, ./dot init links user files;
+./dot fedora-setup adds the opt-in gaming stack.
 
 The distro picks the bundle: packages/arch.bundle or packages/fedora.bundle.
 Flags name the bundle verb; without one an entry is a repository package.
@@ -1512,6 +1518,136 @@ cmd_arch_check() {
   log_ok 'Arch check passed: provisioning matches the repo.'
 }
 
+# Canonical Fedora provisioning steps, mirroring the arch-setup machinery:
+# a short, opt-in, idempotent, verify-able list. NVIDIA stays inside
+# init/update (ensure_nvidia, hardware-conditional) rather than becoming a
+# step, matching its existing terminal verb.
+FEDORA_SETUP_STEPS=(gaming)
+
+# Source one Fedora provisioning module. Sourcing is side-effect free
+# (definitions only), so fedora-check stays non-mutating. Shares the arch
+# registry: both loaders key by module name and never re-source readonly
+# globals under set -e.
+fedora_source_once() {
+  local key=$1 file=$2
+  [[ -n ${DOT_SOURCED_MODULES[${key}]+x} ]] && return 0
+  [[ -r ${file} ]] || die "Missing Fedora provisioning module: ${file}"
+  # shellcheck source=/dev/null
+  source "${file}"
+  DOT_SOURCED_MODULES[${key}]=1
+}
+
+fedora_load_module() {
+  fedora_source_once "$1" "${DOTFILES_DIR}/lib/$1"
+}
+
+fedora_load_modules() {
+  fedora_load_module fedora-gaming.sh
+}
+
+# Echo the selected Fedora steps, one per line, in canonical order. Dies on
+# unknown names, empty picks, or an empty filter value.
+fedora_selected_steps() {
+  local filter=${1:-all} step piece
+  local -a wanted=()
+  if [[ ${filter} != all ]]; then
+    IFS=',' read -r -a wanted <<<"${filter}"
+    for piece in "${wanted[@]}"; do
+      local known=0
+      for step in "${FEDORA_SETUP_STEPS[@]}"; do
+        [[ -n ${piece} && ${piece} == "${step}" ]] && known=1
+      done
+      ((known == 1)) || die "Unknown fedora step: '${piece}'. Steps: ${FEDORA_SETUP_STEPS[*]}."
+    done
+  fi
+  for step in "${FEDORA_SETUP_STEPS[@]}"; do
+    if [[ ${filter} == all ]]; then
+      printf '%s\n' "${step}"
+      continue
+    fi
+    for piece in "${wanted[@]}"; do
+      if [[ ${piece} == "${step}" ]]; then
+        printf '%s\n' "${step}"
+        break
+      fi
+    done
+  done
+}
+
+# Provision this Fedora machine. Gating precedes sudo, network, and every
+# system mutation, exactly like the arch commands. Helpers and the bundle
+# install first so a fresh Workstation reaches a gaming rig from ./dot init
+# plus this one command; every step is idempotent, so re-running repairs.
+cmd_fedora_setup() {
+  [[ ${DISTRO} == fedora ]] || die 'Fedora provisioning is Fedora-only; this machine is not Fedora. Nothing was changed.'
+  local only=all
+  while (($# > 0)); do
+    case "$1" in
+      --only) only=${2:-}; shift 2 || die 'Usage: ./dot fedora-setup [--only step,...]' ;;
+      --only=*) only=${1#*=}; shift ;;
+      -h | --help) die 'Usage: ./dot fedora-setup [--only step,...]' ;;
+      *) die "Unknown option: $1. Usage: ./dot fedora-setup [--only step,...]" ;;
+    esac
+  done
+  [[ -n ${only} ]] || die 'Usage: ./dot fedora-setup [--only step,...]'
+  fedora_load_modules
+  local steps_text steps_rc=0
+  steps_text="$(fedora_selected_steps "${only}")" || steps_rc=$?
+  ((steps_rc == 0)) || die "Refusing to run with step filter '${only}' (see error above)."
+  local -a steps=() step
+  while IFS= read -r step; do
+    [[ -n ${step} ]] || continue
+    steps+=("${step}")
+  done <<<"${steps_text}"
+  ((${#steps[@]} > 0)) || die "Refusing an empty fedora run with filter '${only}'."
+  require_user
+  begin_elevation
+  ensure_helpers
+  install_packages
+  stow_dotfiles
+  stow_fedora_overlay
+  for step in "${steps[@]}"; do
+    case "${step}" in
+      gaming) fedora_gaming_setup ;;
+    esac
+  done
+  log_ok "Fedora setup complete (${steps[*]})."
+}
+
+# Verify Fedora provisioning without changing anything. No elevation: every
+# probe is read-only.
+cmd_fedora_check() {
+  [[ ${DISTRO} == fedora ]] || die 'Fedora provisioning is Fedora-only; this machine is not Fedora. Nothing was changed.'
+  local only=all
+  while (($# > 0)); do
+    case "$1" in
+      --only) only=${2:-}; shift 2 || die 'Usage: ./dot fedora-check [--only step,...]' ;;
+      --only=*) only=${1#*=}; shift ;;
+      -h | --help) die 'Usage: ./dot fedora-check [--only step,...]' ;;
+      *) die "Unknown option: $1. Usage: ./dot fedora-check [--only step,...]" ;;
+    esac
+  done
+  [[ -n ${only} ]] || die 'Usage: ./dot fedora-check [--only step,...]'
+  fedora_load_modules
+  local failed=0
+  local steps_text steps_rc=0
+  steps_text="$(fedora_selected_steps "${only}")" || steps_rc=$?
+  ((steps_rc == 0)) || die "Refusing to check with step filter '${only}' (see error above)."
+  local -a steps=() step
+  while IFS= read -r step; do
+    [[ -n ${step} ]] || continue
+    steps+=("${step}")
+  done <<<"${steps_text}"
+  ((${#steps[@]} > 0)) || die "Refusing an empty fedora check with filter '${only}'."
+  for step in "${steps[@]}"; do
+    case "${step}" in
+      gaming) fedora_gaming_verify || failed=1 ;;
+    esac
+  done
+  ((failed == 0)) || die 'Fedora check found the problems listed above.'
+  log_ok 'Fedora check passed: provisioning matches the repo.'
+}
+
 main() {
   local cmd=${1:-help}
   shift || true
@@ -1526,6 +1662,8 @@ main() {
     benchmark-shell) cmd_benchmark_shell "$@" ;;
     arch-setup) detect_distro; cmd_arch_setup "$@" ;;
     arch-check) detect_distro; cmd_arch_check "$@" ;;
+    fedora-setup) detect_distro; cmd_fedora_setup "$@" ;;
+    fedora-check) detect_distro; cmd_fedora_check "$@" ;;
     help | -h | --help) usage ;;
     *) die "Unknown command: ${cmd}. See ./dot help." ;;
   esac

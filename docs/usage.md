@@ -43,6 +43,32 @@ CLI version and agent targets live in `lib/shared-home.sh`. OpenCode and Codex
 use the universal skill directory; the CLI also links Claude Code and Pi.
 Plain `dot stow` does not download skills; use `init`/`update` for a full refresh.
 
+## Fedora provisioning
+
+Starting point: vanilla Fedora Workstation, non-atomic. `fedora-setup` and
+`fedora-check` refuse on non-Fedora before elevation, network, or any mutation,
+and mirror the Arch step machinery: canonical order, `--only` filters, idempotent
+re-runs that repair.
+
+Steps run in canonical order; `--only` filters steps, never the bundle install
+or stow:
+
+1. `gaming` — opt-in Steam stack: asks once (default No) and skips quietly on
+   No or without a terminal. Installs only vendor-backed packages: Steam from
+   RPM Fusion (the route NVIDIA drivers already use), GameMode, MangoHud,
+   GOverlay, Gamescope and Protontricks from Fedora's own repos. No third-party
+   COPRs: vkbasalt and ProtonPlus have no official Fedora or RPM Fusion
+   package and are deliberately excluded. Fedora resolves the 32-bit game
+   libraries itself; there is no multilib toggle, and GameMode needs no group
+   membership on Fedora.
+
+`./dot fedora-check [--only step,...]` verifies without changing anything; on a
+fresh host it reports what setup will add.
+
+NVIDIA drivers are not a step: they install through `init`/`update` (and
+`./dot nvidia`) when the hardware probe finds an NVIDIA display controller,
+following the Fedora gaming docs.
+
 ## Arch provisioning
 
 Starting point: minimal archinstall with Limine, no desktop; btrfs on `/` only
@@ -73,8 +99,8 @@ Safety contracts:
 
 ## Fedora notes
 
-Fedora system provisioning is out of scope apart from NVIDIA. Atomic/OSTree
-editions are not supported.
+Fedora system provisioning beyond gaming is out of scope apart from NVIDIA.
+Atomic/OSTree editions are not supported.
 
 `./dot nvidia` (also part of `init`/`update`) is Fedora-only and refuses
 elsewhere. It probes once (`lspci` for a vendor-`10de` display controller —
