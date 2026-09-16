@@ -40,11 +40,13 @@ Links `home/` + `home-arch/`:
 ```
 
 **Fedora** — Workstation, non-atomic only. Links `home/` + `home-fedora/`;
-system provisioning is out of scope except NVIDIA:
+NVIDIA drivers install automatically when the hardware is present, and the
+gaming stack is an explicit opt-in:
 
 ```bash
 ./dot init
 ./dot doctor
+./dot fedora-setup   # asks once about the gaming stack (Steam, GameMode, MangoHud)
 ```
 
 Rerun `init` to reapply the setup.
@@ -61,6 +63,8 @@ Rerun `init` to reapply the setup.
 | `./dot package remove NAME` | Drop the bundle line, then uninstall |
 | `./dot benchmark-shell` | Time fish startup; warns past 100 ms |
 | `./dot nvidia` | Fedora NVIDIA drivers; no-op without the hardware |
+| `./dot fedora-setup` | Provision this Fedora machine (opt-in gaming step) |
+| `./dot fedora-check` | Verify Fedora provisioning without changing anything |
 
 ## Arch system
 

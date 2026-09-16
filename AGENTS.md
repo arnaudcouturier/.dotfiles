@@ -3,8 +3,11 @@
 Dotfiles for Arch Linux and Fedora Workstation. `dot` owns installation, one
 shared `home/`, one bundle per distro, plus an Arch-only `home-arch/` overlay.
 Arch system provisioning lives behind `./dot arch-setup`/`arch-check`
-(idempotent; re-running repairs). Fedora system provisioning stays out of
-scope apart from the existing NVIDIA path, as do atomic editions. README.md
+(idempotent; re-running repairs). Fedora system provisioning lives behind
+`./dot fedora-setup`/`fedora-check` (same machinery: canonical steps,
+`--only` filters, idempotent repair); today that is one opt-in gaming step
+(`lib/fedora-gaming.sh`, official packages only, NVIDIA still installs
+through init/update). Atomic editions stay out of scope. README.md
 covers usage; these are the rules that are easy to break.
 
 - **Never edit `~` directly.** Edit `home/`, then `./dot stow`. Conflicts are
