@@ -15,12 +15,13 @@ covers usage; these are the rules that are easy to break.
   real files and are edited in place — stow can never own paths the running
   compositor recreates, and upstream defines both as user-edited.
 - **Stow is per-distro selection.** Shared `home/` holds common files plus
-  two forwarding aliases (Ghostty, hypr input) that shared stow skips on
+  a Ghostty forwarding alias that shared stow skips on
 every distro; `home-fedora/` stows the Fedora sources and `home-arch/`
 the Arch ones, each with the same overwrite/no-backup rules. `home-arch/`
 additionally excludes the two compositor-owned user files from stow (the
 desktop module copy-deploys them as real files instead). `doctor`
-checks each tree against its selected source; Fedora is otherwise unchanged.
+checks each tree against its selected source. The retired Hyprland input path
+remains in the exclusion list only for legacy-link cleanup.
 - **Never translate package names between distros.** Each bundle is a recipe
   for one distro. `dot` refuses a verb the current distro cannot use and dies
   before changing anything. Verify a Fedora entry against its vendor before
@@ -68,10 +69,13 @@ checks each tree against its selected source; Fedora is otherwise unchanged.
   `sudo` from an agent shell — let `dot` do it.
 - **`init` must stay idempotent**: re-running it is the supported repair path.
 
-Skills live in `home/.agents/skills/<name>/` and stow to `~/.agents/skills/`.
-If a copy shows up under `.pi/`, fold it back and delete the copy; if a stowed
-skill became a real directory, copy it into `home/` and restow. Never restore
-a skill deleted from `home/`.
+Curated skill sources live in `home/.agents/skills/<name>/`. Stow skips skills
+and the retired Pi workspace. `dot init`/`update` installs skills globally via
+`npx skills` for OpenCode, Claude Code, Codex and Pi; `lib/shared-home.sh`
+then refreshes Matt Pocock's set and Herdr's official skill. npx owns deployed
+skill directories and compatibility links. Edit curated sources in the repo,
+not the installed copies. Never restore a deleted skill. Retired stow links
+are removed only when they resolve into this checkout; preserve local files.
 
 Bash: `set -euo pipefail`, quoted expansions, `die` on bad input, a comment
 above anything non-obvious. Before committing a change to `dot`:

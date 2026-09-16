@@ -1,4 +1,4 @@
-# npm / build artifacts from home/.pi extension workspaces.
-home/.pi/**/node_modules/
+# npm / build artifacts from agent extension workspaces.
+**/node_modules/
 *.tsbuildinfo
 npm-debug.log*

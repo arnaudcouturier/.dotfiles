@@ -1,4 +1,19 @@
-# Vendored skills
+# Curated skill sources
+
+## Deployment change (2026-09-16)
+
+These files are source material, not stowed configuration. `dot init`/`update`
+installs them globally with `npx skills`, then installs the complete current
+`mattpocock/skills` collection and the official `herdrdev/herdr` skill. Those
+upstream sources supersede matching curated copies at deployment time.
+
+Removed: json-canvas, obsidian-bases, obsidian-cli, obsidian-markdown and
+obsidian-canvas-creator. Defuddle, Knap and general-purpose diagrams remain.
+
+The notes below record original imports, not current installed versions.
+Herdr Annotate now ships a native binary (upstream README checked 2026-09-16);
+the old Bun requirement below is historical, and `bun` is gone from the
+Fedora bundle.
 
 Copied from https://github.com/mattpocock/skills at commit 6654f6b (2026-09-01),
 MIT license. This is the curated set shipped by the upstream Claude Code

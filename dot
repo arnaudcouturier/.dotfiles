@@ -642,17 +642,20 @@ cmd_nvidia() {
 
 # --- dotfiles ---------------------------------------------------------------
 
+# shellcheck source=lib/shared-home.sh
+source "${DOTFILES_DIR}/lib/shared-home.sh"
+
 # Every file and symlink under home/, NUL-separated, in stable order.
-# node_modules (npm workspaces) and home/.pi/.gitignore stay in the repo.
+# Skills use npx, not stow. Retired Pi workspace dependencies stay local.
 home_files() {
-  find "${HOME_DIR}" -mindepth 1 \( -name node_modules -o -name .gitignore \) -prune \
+  find "${HOME_DIR}" -mindepth 1 \( -name node_modules -o -name .gitignore \
+    -o -path "${HOME_DIR}/.agents/skills" -o -path "${HOME_DIR}/.pi" \) -prune \
     -o \( -type f -o -type l \) -print0 | sort -z
 }
 
-# Repo forwarding aliases kept where Fedora-owned files used to live, so
-# links stowed before the move keep resolving through them. Transitional,
-# not configuration: shared stow and doctor skip them on every distro, and
-# each distro stows its own real copy from its own tree instead.
+# Ghostty's forwarding alias keeps old deployments resolving. The retired
+# Hyprland path remains excluded as a compatibility tombstone for Arch's
+# stale-link cleanup; neither shared nor Fedora deploys that file now.
 HOME_COMPAT_FORWARD_PATHS=(
   .config/ghostty/config
   .config/hypr/input.lua
@@ -678,6 +681,7 @@ home_compat_ignore_pattern() {
 stow_dotfiles() {
   require_command stow
   [[ -d ${HOME_DIR} ]] || die "Missing home directory: ${HOME_DIR}"
+  prune_retired_home_links
   log_step "Linking home/ into ${HOME} (conflicts are overwritten, no backup)"
   local src rel target compat
   while IFS= read -r -d '' src; do
@@ -694,7 +698,8 @@ stow_dotfiles() {
     log_info "Overwriting ${target}"
     rm -f -- "${target}"
   done < <(home_files)
-  local -a stow_ignores=(--ignore='(^|/)node_modules(/|$)')
+  local -a stow_ignores=(--ignore='(^|/)node_modules(/|$)'
+    --ignore='(^|/)\.agents/skills(/|$)' --ignore='(^|/)\.pi(/|$)')
   for compat in ${HOME_COMPAT_FORWARD_PATHS[@]+"${HOME_COMPAT_FORWARD_PATHS[@]}"}; do
     stow_ignores+=("$(home_compat_ignore_pattern "${compat}")")
   done
@@ -932,6 +937,7 @@ cmd_init() {
   stow_fedora_overlay
   sync_herdr_plugins
   sync_herdr_integrations
+  sync_agent_skills
   set_fish_shell
   if [[ ${DISTRO} == arch ]]; then
     log_info 'Arch system provisioning is separate and idempotent: ./dot arch-check, then ./dot arch-setup.'
@@ -954,6 +960,7 @@ cmd_update() {
   stow_fedora_overlay
   sync_herdr_plugins
   sync_herdr_integrations
+  sync_agent_skills
   if [[ ${DISTRO} == arch ]]; then
     log_info 'Arch system provisioning is separate and idempotent: ./dot arch-check, then ./dot arch-setup.'
   fi
@@ -1278,7 +1285,7 @@ cmd_benchmark_shell() {
     $((avg / 1000)) $((avg % 1000 / 10)) $((min / 1000)) $((max / 1000)) "${runs}"
   log_ok "fish startup: ${summary}"
   if ((avg > 100000)); then
-    log_warn 'Above 100ms — check fish conf.d additions and the starship timeout.'
+    log_warn 'Above 100ms — check fish conf.d additions, interactive hooks, and Fastfetch.'
   fi
 }
 
