@@ -91,6 +91,9 @@ fi
 grep -Eq '^[[:space:]]*windowOpacity[[:space:]]*=[[:space:]]*0\.95,' \
   "${OVERLAY}/.config/caelestia/hypr-vars.lua" \
   || scope_fail 'overlay hypr-vars.lua does not pin windowOpacity 0.95 (transparency on by default)'
+grep -Eq '^[[:space:]]*background-opacity[[:space:]]*=[[:space:]]*1([.]0+)?[[:space:]]*$' \
+  "${OVERLAY}/.config/ghostty/config" \
+  || scope_fail 'overlay Ghostty config has client-side transparency (Hyprland cannot toggle it fully opaque)'
 grep -Fq 'SUPER + SHIFT + O' "${OVERLAY}/.config/caelestia/hypr-user.lua" \
   || scope_fail 'overlay hypr-user.lua lacks the SUPER + SHIFT + O transparency toggle'
 grep -Fq 'hypr-opacity-toggle' "${OVERLAY}/.config/caelestia/hypr-user.lua" \
