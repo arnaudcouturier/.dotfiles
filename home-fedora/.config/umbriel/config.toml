@@ -24,6 +24,10 @@ autostart = ["noctalia"]
 "Mod+K" = { action = "cheatsheet-toggle", repeat = false }
 "Mod+Return" = { action = "spawn:ghostty", repeat = false }
 "Mod+E" = { action = "spawn:nautilus", repeat = false }
+"Mod+P" = { action = "spawn:noctalia msg screenshot-region", repeat = false }
+"Mod+Shift+P" = { action = "spawn:noctalia msg screenshot-fullscreen", repeat = false }
+"Mod+Shift+A" = { action = "spawn:noctalia msg screenshot-annotate", repeat = false }
+"Mod+Ctrl+A" = { action = "spawn:noctalia msg annotate", repeat = false }
 
 # ── Optional placeholders ─────────────────────────────────────────────
 # Everything below stays commented, so packaged defaults apply. Uncomment

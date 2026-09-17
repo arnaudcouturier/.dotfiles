@@ -38,6 +38,8 @@ repo "gh" # GitHub CLI (Arch name: github-cli)
 repo "neovim" # Neovim editor (the LazyVim starter config lives in home/.config/nvim)
 repo "qbittorrent" # BitTorrent client
 repo "nautilus" # GNOME Files, file manager (Mod+E keybind)
+repo "papirus-icon-theme" # Papirus icon theme (Fedora ships base + variants)
+repo "papirus-icon-theme-dark" # Papirus-Dark variant for dark themes
 copr "atim/starship" # starship's upstream Fedora route (no starship in Fedora 44 repos)
 repo "starship" # cross-shell prompt (fish init in home/.config/fish/conf.d)
 
