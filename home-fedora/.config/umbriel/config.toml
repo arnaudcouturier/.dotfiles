@@ -44,6 +44,8 @@ mode = "3840x2160@239.76"  # WIDTHxHEIGHT or WIDTHxHEIGHT@HZ
 #position = [0, 0]        # logical top-left; omit for automatic placement
 scale = 1            # logical size is mode size divided by scale
 vrr = "disabled"       # disabled, always, or fullscreen
+# hdr = "auto"           # off, on, auto, or fullscreen; Docs: https://docs.noctalia.dev/umbriel/outputs/#hdr
+# sdr_white = 203        # SDR reference white in cd/m2 during HDR, 80-1000
 # workspaces = 5           # fixed count; omit for dynamic workspaces
 
 # Workspaces: global behavior (per-output inventory lives in [output.*]).
