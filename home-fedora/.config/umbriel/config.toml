@@ -32,11 +32,11 @@ autostart = ["noctalia"]
 # Monitors: list connector names and modes with `umbriel outputs` first.
 # Machine-specific, so keep commented unless the name is this machine's.
 # Docs: https://docs.noctalia.dev/umbriel/outputs/
-[output.DP-1]
-mode = "3840x2160@144"  # WIDTHxHEIGHT or WIDTHxHEIGHT@HZ
+[output."ASUSTek COMPUTER INC PG32UCDM S6LMQS106636"]
+mode = "3840x2160@240"  # WIDTHxHEIGHT or WIDTHxHEIGHT@HZ
 #position = [0, 0]        # logical top-left; omit for automatic placement
 scale = 1            # logical size is mode size divided by scale
-vrr = "fullscreen"       # disabled, always, or fullscreen
+vrr = "disabled"       # disabled, always, or fullscreen
 # workspaces = 5           # fixed count; omit for dynamic workspaces
 
 # Workspaces: global behavior (per-output inventory lives in [output.*]).
