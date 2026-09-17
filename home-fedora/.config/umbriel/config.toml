@@ -20,12 +20,14 @@ autostart = ["noctalia"]
 # Personal keybindings: Super+K opens Umbriel's native cheatsheet, Super+Enter
 # opens ghostty. Mod+K replaces the packaged Vim-style focus-up; Mod+Up still
 # focuses upward. Mod+Return overrides the packaged kitty terminal.
+# Mod+Alt+K cycles keyboard layouts (no Menu key on this keyboard; upstream
+# recipe from the packaged defaults).
 [keybinds]
 "Mod+K" = { action = "cheatsheet-toggle", repeat = false }
 "Mod+Return" = { action = "spawn:ghostty", repeat = false }
 "Mod+E" = { action = "spawn:nautilus", repeat = false }
 "Mod+W" = { action = "spawn:brave-origin", repeat = false }
-"Menu" = { action = "keyboard-layout-next", repeat = false }
+"Mod+Alt+K" = { action = "keyboard-layout-next", repeat = false }
 "Mod+P" = { action = "spawn:noctalia msg screenshot-region", repeat = false }
 "Mod+Shift+P" = { action = "spawn:noctalia msg screenshot-fullscreen", repeat = false }
 "Mod+Shift+A" = { action = "spawn:noctalia msg screenshot-annotate", repeat = false }
