@@ -15,9 +15,9 @@
     },
     "constants": [
       "\u001b[37m",
-      "\u001b[38;5;16m",
-      "\u001b[38;5;17m",
-      "\u001b[38;5;18m"
+      "\u001b[38;5;219m",
+      "\u001b[38;5;116m",
+      "\u001b[38;5;111m"
     ],
     "percent": {
       "color": {
@@ -75,7 +75,7 @@
     {
       "type": "os",
       "key": "│ {$4}󰻀{$1}  distro",
-      "format": "{$4}{pretty-name>22}{$1} │"
+      "format": "{$4}{name} {version}{$1} │"
     },
     {
       "type": "custom",
