@@ -37,6 +37,7 @@ repo "fastfetch" # minimalist system info
 repo "gh" # GitHub CLI (Arch name: github-cli)
 repo "neovim" # Neovim editor (the LazyVim starter config lives in home/.config/nvim)
 repo "qbittorrent" # BitTorrent client
+repo "nautilus" # GNOME Files, file manager (Mod+E keybind)
 
 # Fonts (terminal and editor; Nerd Font glyphs come from the cascadia NF
 # build — Fedora ships no JetBrainsMono Nerd package, so that one installs

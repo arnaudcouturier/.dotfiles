@@ -23,6 +23,7 @@ autostart = ["noctalia"]
 [keybinds]
 "Mod+K" = { action = "cheatsheet-toggle", repeat = false }
 "Mod+Return" = { action = "spawn:ghostty", repeat = false }
+"Mod+E" = { action = "spawn:nautilus", repeat = false }
 
 # ── Optional placeholders ─────────────────────────────────────────────
 # Everything below stays commented, so packaged defaults apply. Uncomment
@@ -31,9 +32,9 @@ autostart = ["noctalia"]
 
 # Monitors: list connector names and modes with `umbriel outputs` first.
 # Machine-specific, so keep commented unless the name is this machine's.
-# Docs: https://docs.noctalia.dev/umbriel/outputs/
+# Docs: https://docs.noctalia.dev/umbriel/outputs/stow
 [output."ASUSTek COMPUTER INC PG32UCDM S6LMQS106636"]
-mode = "3840x2160@240"  # WIDTHxHEIGHT or WIDTHxHEIGHT@HZ
+mode = "3840x2160@239.76"  # WIDTHxHEIGHT or WIDTHxHEIGHT@HZ
 #position = [0, 0]        # logical top-left; omit for automatic placement
 scale = 1            # logical size is mode size divided by scale
 vrr = "disabled"       # disabled, always, or fullscreen
