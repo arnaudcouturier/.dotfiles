@@ -10,7 +10,7 @@
 #   umbriel validate
 #   umbriel validate -c ~/.config/umbriel/config.toml
 [include]
-files = ["/usr/share/umbriel/config.toml"]
+files = ["/usr/share/umbriel/config.toml", "noctalia.toml"]
 
 # One shell lifecycle owner: the compositor starts Noctalia once at login.
 # Upstream's documented compositor-startup pattern; no separate user service.
@@ -23,3 +23,73 @@ autostart = ["noctalia"]
 [keybinds]
 "Mod+K" = { action = "cheatsheet-toggle", repeat = false }
 "Mod+Return" = { action = "spawn:ghostty", repeat = false }
+
+# ── Optional placeholders ─────────────────────────────────────────────
+# Everything below stays commented, so packaged defaults apply. Uncomment
+# and adapt what you want, then run `umbriel validate`.
+# Full docs: https://docs.noctalia.dev/umbriel/
+
+# Monitors: list connector names and modes with `umbriel outputs` first.
+# Machine-specific, so keep commented unless the name is this machine's.
+# Docs: https://docs.noctalia.dev/umbriel/outputs/
+[output.DP-1]
+mode = "3840x2160@144"  # WIDTHxHEIGHT or WIDTHxHEIGHT@HZ
+#position = [0, 0]        # logical top-left; omit for automatic placement
+scale = 1            # logical size is mode size divided by scale
+vrr = "fullscreen"       # disabled, always, or fullscreen
+# workspaces = 5           # fixed count; omit for dynamic workspaces
+
+# Workspaces: global behavior (per-output inventory lives in [output.*]).
+# Docs: https://docs.noctalia.dev/umbriel/workspaces/
+# [workspaces]
+# back_and_forth = true  # re-select the active workspace to jump back
+
+# Layout: default tiling mode and gaps; workspace rules can override these.
+# Docs: https://docs.noctalia.dev/umbriel/layout/
+# [layout]
+# mode = "scrolling"  # scrolling, dwindle, or master
+# gap = 8             # logical pixels between tiles, 0-500
+
+# Input: touchpad/keyboard examples. Device names for per-device
+# [[input.device]] overrides come from `libinput list-devices`.
+# Docs: https://docs.noctalia.dev/umbriel/input/
+# [input.touchpad]
+# natural_scroll = true
+# [input.keyboard]
+# layout = "us"  # e.g. "us,de"; empty uses the system default
+
+# Scratchpad terminal: uncomment, launch a window with a matching app-id,
+# then summon it anywhere with Mod+Space.
+# Docs: https://docs.noctalia.dev/umbriel/scratchpads/
+# [[scratchpad]]
+# name = "terminal"
+# [[window_rule]]
+# match.app_id = "^scratchpad-terminal$"
+# default_scratchpad = "terminal"
+# default_floating = true
+# default_width = 0.6
+# default_height = 0.5
+
+# Window rules: float picture-in-picture windows (browsers expose no PiP role
+# for the compositor to match on).
+# Docs: https://docs.noctalia.dev/umbriel/window-rules/
+# [[window_rule]]
+# match.title = "^(Picture-in-Picture|Picture in picture)$"
+# default_floating = true
+# default_position = { x = 20, y = 20, anchor = "bottom_right" }
+
+# Media keys (Noctalia usually owns volume/brightness; these are spares).
+# Docs: https://docs.noctalia.dev/umbriel/keybinds/
+# "XF86AudioRaiseVolume" = "spawn:wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+"
+# "XF86AudioLowerVolume" = "spawn:wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-"
+# "XF86AudioMute" = "spawn:wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"
+# "XF86AudioPlay" = "spawn:playerctl play-pause"
+
+# Second-monitor navigation: -next/-previous wrap, so one bind each reaches
+# the other screen of a two-monitor setup.
+# "Mod+Tab" = "output-focus-next"
+# "Mod+Shift+Tab" = "window-move-to-output-next"
+
+# Lid events (laptop): run a command when the lid closes or opens.
+# [events]
+# lid_close = "notify-send 'The laptop lid is closed'"

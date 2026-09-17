@@ -1,4 +1,5 @@
 # Standalone terminal preferences: no desktop-generated theme.
+font-family = JetBrains Mono Nerd Font
 font-size = 12
 window-decoration = false
 window-padding-x = 12
@@ -20,3 +21,4 @@ gtk-titlebar = false
 # Keep prompt cursor changes disabled without contradictory cursor flags.
 shell-integration-features = sudo,title,no-cursor
 gtk-single-instance = true
+theme = noctalia

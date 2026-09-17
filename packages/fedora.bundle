@@ -38,6 +38,16 @@ repo "gh" # GitHub CLI (Arch name: github-cli)
 repo "neovim" # Neovim editor (the LazyVim starter config lives in home/.config/nvim)
 repo "qbittorrent" # BitTorrent client
 
+# Fonts (terminal and editor; Nerd Font glyphs come from the cascadia NF
+# build — Fedora ships no JetBrainsMono Nerd package, so that one installs
+# user-local via getnf into ~/.local/share/fonts instead)
+repo "jetbrains-mono-fonts" # coding font with ligatures (Arch: ttf-jetbrains-mono-nerd metrics)
+repo "cascadia-code-nf-fonts" # Cascadia Code with Nerd Font glyphs for prompt icons
+repo "fira-code-fonts" # coding font with ligatures
+repo "ibm-plex-mono-fonts" # legible coding font
+repo "intel-one-mono-fonts" # highly legible coding font
+repo "rsms-inter-vf-fonts" # Inter UI sans for apps and browser
+
 # Applications from official vendor repositories
 repofile "https://pkgs.tailscale.com/stable/fedora/tailscale.repo" # Tailscale's official repo
 repo "tailscale" # mesh VPN
@@ -45,6 +55,8 @@ repofile "https://repository.mullvad.net/rpm/stable/mullvad.repo" # Mullvad's of
 repo "mullvad-vpn" # Mullvad VPN client
 repofile "https://brave-browser-rpm-release.s3.brave.com/brave-browser.repo" # Brave's official repo
 repo "brave-origin" # Brave Origin, the system's Chromium-based browser
+repofile "https://pkg.claude-desktop-debian.dev/rpm/claude-desktop-unofficial.repo" # community repack of Anthropic's official Linux .deb for Fedora/RHEL (Anthropic ships no Fedora build; repo file verified live)
+repo "claude-desktop-unofficial" # Claude Desktop, unofficial RPM that installs side-by-side with the official .deb
 
 # Pinned official downloads; dot reads each URL's build out of the package
 # header and compares it against the installed one on every run, so a bumped
