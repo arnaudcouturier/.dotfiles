@@ -3,15 +3,15 @@
   "logo": {
     "type": "small",
     "color": {
-      "1": "#a7c063",
-      "2": "#d3c663"
+      "1": "#cb63f7",
+      "2": "#fab363"
     }
   },
   "display": {
     "separator": "  ",
     "color": {
-      "keys": "#a7c080",
-      "title": "#d3c6aa"
+      "keys": "#cba6f7",
+      "title": "#fab387"
     },
     "constants": [
       "\u001b[37m",
@@ -21,9 +21,9 @@
     ],
     "percent": {
       "color": {
-        "green": "#9da9a0",
-        "yellow": "#c8e996",
-        "red": "#e67e80"
+        "green": "#94e2d5",
+        "yellow": "#bb8af4",
+        "red": "#f38ba8"
       }
     }
   },
