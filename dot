@@ -56,16 +56,17 @@ dot — install packages and link dotfiles on Arch and Fedora.
                              provision this Arch machine (Arch-only, idempotent repair)
   ./dot arch-check [--only step,...]
                              verify Arch provisioning without changing anything
-  ./dot fedora-setup [--only step,...]
-                             provision this Fedora machine (Fedora-only, opt-in gaming)
+  ./dot fedora-setup [--only step,...] [--replace-display-manager]
+                             provision this Fedora machine (Fedora-only, gaming opt-in)
   ./dot fedora-check [--only step,...]
                              verify Fedora provisioning without changing anything
 
 Arch steps for --only: system gpu gaming snapshots desktop greeter limine.
-Fedora steps for --only: gaming.
+Fedora steps for --only: gaming desktop greeter.
 On Arch, ./dot init links user files (shared plus overlay); ./dot arch-setup
 provisions the system afterwards. On Fedora, ./dot init links user files;
-./dot fedora-setup adds the opt-in gaming stack.
+./dot fedora-setup provisions the desktop and greeter, plus the opt-in
+gaming stack.
 
 The distro picks the bundle: packages/arch.bundle or packages/fedora.bundle.
 Flags name the bundle verb; without one an entry is a repository package.
@@ -1519,10 +1520,12 @@ cmd_arch_check() {
 }
 
 # Canonical Fedora provisioning steps, mirroring the arch-setup machinery:
-# a short, opt-in, idempotent, verify-able list. NVIDIA stays inside
-# init/update (ensure_nvidia, hardware-conditional) rather than becoming a
-# step, matching its existing terminal verb.
-FEDORA_SETUP_STEPS=(gaming)
+# gaming stays opt-in; desktop installs the vanilla Umbriel/Noctalia session;
+# greeter serves it through Noctalia Greeter behind the explicit
+# --replace-display-manager contract. NVIDIA stays inside init/update
+# (ensure_nvidia, hardware-conditional) rather than becoming a step,
+# matching its existing terminal verb.
+FEDORA_SETUP_STEPS=(gaming desktop greeter)
 
 # Source one Fedora provisioning module. Sourcing is side-effect free
 # (definitions only), so fedora-check stays non-mutating. Shares the arch
@@ -1543,6 +1546,8 @@ fedora_load_module() {
 
 fedora_load_modules() {
   fedora_load_module fedora-gaming.sh
+  fedora_load_module fedora-desktop.sh
+  fedora_load_module fedora-greeter.sh
 }
 
 # Echo the selected Fedora steps, one per line, in canonical order. Dies on
@@ -1576,20 +1581,22 @@ fedora_selected_steps() {
 
 # Provision this Fedora machine. Gating precedes sudo, network, and every
 # system mutation, exactly like the arch commands. Helpers and the bundle
-# install first so a fresh Workstation reaches a gaming rig from ./dot init
+# install first so a fresh Fedora reaches a working desktop from ./dot init
 # plus this one command; every step is idempotent, so re-running repairs.
+# The greeter step re-verifies the desktop first, even under --only greeter.
 cmd_fedora_setup() {
   [[ ${DISTRO} == fedora ]] || die 'Fedora provisioning is Fedora-only; this machine is not Fedora. Nothing was changed.'
-  local only=all
+  local only=all replace_dm=0
   while (($# > 0)); do
     case "$1" in
-      --only) only=${2:-}; shift 2 || die 'Usage: ./dot fedora-setup [--only step,...]' ;;
+      --only) only=${2:-}; shift 2 || die 'Usage: ./dot fedora-setup [--only step,...] [--replace-display-manager]' ;;
       --only=*) only=${1#*=}; shift ;;
-      -h | --help) die 'Usage: ./dot fedora-setup [--only step,...]' ;;
-      *) die "Unknown option: $1. Usage: ./dot fedora-setup [--only step,...]" ;;
+      --replace-display-manager) replace_dm=1; shift ;;
+      -h | --help) die 'Usage: ./dot fedora-setup [--only step,...] [--replace-display-manager]' ;;
+      *) die "Unknown option: $1. Usage: ./dot fedora-setup [--only step,...] [--replace-display-manager]" ;;
     esac
   done
-  [[ -n ${only} ]] || die 'Usage: ./dot fedora-setup [--only step,...]'
+  [[ -n ${only} ]] || die 'Usage: ./dot fedora-setup [--only step,...] [--replace-display-manager]'
   fedora_load_modules
   local steps_text steps_rc=0
   steps_text="$(fedora_selected_steps "${only}")" || steps_rc=$?
@@ -1609,9 +1616,11 @@ cmd_fedora_setup() {
   for step in "${steps[@]}"; do
     case "${step}" in
       gaming) fedora_gaming_setup ;;
+      desktop) fedora_desktop_setup ;;
+      greeter) fedora_greeter_setup "${replace_dm}" ;;
     esac
   done
-  log_ok "Fedora setup complete (${steps[*]})."
+  log_ok "Fedora setup complete (${steps[*]}). Reboot, then run ./dot fedora-check."
 }
 
 # Verify Fedora provisioning without changing anything. No elevation: every
@@ -1642,6 +1651,8 @@ cmd_fedora_check() {
   for step in "${steps[@]}"; do
     case "${step}" in
       gaming) fedora_gaming_verify || failed=1 ;;
+      desktop) fedora_desktop_verify || failed=1 ;;
+      greeter) fedora_greeter_verify || failed=1 ;;
     esac
   done
   ((failed == 0)) || die 'Fedora check found the problems listed above.'

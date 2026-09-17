@@ -72,7 +72,7 @@ if sed 's/#.*//' "${GAMING_LIB}" | grep -Eqi 'copr|terrapkg'; then
 fi
 
 # --- Static: dot wires the Fedora verbs and steps. ---
-grep -Fq 'FEDORA_SETUP_STEPS=(gaming)' "${TEST_ARCH_REPO_ROOT}/dot" \
+grep -Fq 'FEDORA_SETUP_STEPS=(gaming desktop greeter)' "${TEST_ARCH_REPO_ROOT}/dot" \
   || test_arch_die 'dot must declare the Fedora step list'
 grep -Fq 'fedora_load_module fedora-gaming.sh' "${TEST_ARCH_REPO_ROOT}/dot" \
   || test_arch_die 'dot must load the fedora-gaming module'

@@ -1,0 +1,25 @@
+# Managed by ./dot fedora-setup via stow; edit the repo, then ./dot stow.
+#
+# Vanilla Umbriel packaged defaults plus two personal overrides.
+# The packaged example lives at /usr/share/umbriel/config.toml; values here
+# win over every include, and [keybinds] merges key by key, so only Mod+K
+# and Mod+Return differ from the package. All other bindings, scrolling
+# behavior, workspaces, gestures and appearance stay packaged defaults.
+#
+# Validate without starting the compositor:
+#   umbriel validate
+#   umbriel validate -c ~/.config/umbriel/config.toml
+[include]
+files = ["/usr/share/umbriel/config.toml"]
+
+# One shell lifecycle owner: the compositor starts Noctalia once at login.
+# Upstream's documented compositor-startup pattern; no separate user service.
+[general]
+autostart = ["noctalia"]
+
+# Personal keybindings: Super+K opens Umbriel's native cheatsheet, Super+Enter
+# opens ghostty. Mod+K replaces the packaged Vim-style focus-up; Mod+Up still
+# focuses upward. Mod+Return overrides the packaged kitty terminal.
+[keybinds]
+"Mod+K" = { action = "cheatsheet-toggle", repeat = false }
+"Mod+Return" = { action = "spawn:ghostty", repeat = false }

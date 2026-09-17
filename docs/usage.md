@@ -61,6 +61,28 @@ or stow:
    package and are deliberately excluded. Fedora resolves the 32-bit game
    libraries itself; there is no multilib toggle, and GameMode needs no group
    membership on Fedora.
+2. `desktop` — vanilla Umbriel plus the native Noctalia shell: `umbriel-nightly`
+   from the community Terra repository (bootstrapped once via its release
+   package; later transactions keep signature checks), `noctalia`, `ghostty`
+   (Mod+Return overrides the packaged kitty default), `xwayland-satellite`,
+   the GTK portal fallback, and `gnome-keyring` for Secret Service. The Umbriel portal
+   backend arrives as an `umbriel-nightly` dependency and prefers
+   `umbriel;gtk` without touching the retained GNOME session. The personal
+   keybindings are Mod+K for the native cheatsheet plus Mod+Return for
+   ghostty; everything else stays packaged defaults, and Noctalia autostarts
+   once from the compositor.
+3. `greeter` — greetd plus Noctalia Greeter (`noctalia-greeter-session`, which
+   bundles its own login compositor). GDM and GNOME stay installed for
+   recovery, never enabled alongside greetd. Re-verifies the desktop first,
+   even under `--only greeter`.
+
+Safety contracts (same as Arch): without `--replace-display-manager`, setup
+refuses beside an incumbent display manager instead of displacing it. Only
+the explicit flag switches. One exception is not a switch: gdm arrives only
+as the recovery desktop, and if its dnf preset enables it on a host that had
+no display manager, setup stands that artifact back down without demanding
+the flag. The previous `/etc/greetd` config gets one
+`.dotfiles-backup`, like the Arch boot/login templates.
 
 `./dot fedora-check [--only step,...]` verifies without changing anything; on a
 fresh host it reports what setup will add.
@@ -99,8 +121,8 @@ Safety contracts:
 
 ## Fedora notes
 
-Fedora system provisioning beyond gaming is out of scope apart from NVIDIA.
-Atomic/OSTree editions are not supported.
+Fedora system provisioning covers the gaming, desktop, and greeter steps
+above, plus NVIDIA. Atomic/OSTree editions are not supported.
 
 `./dot nvidia` (also part of `init`/`update`) is Fedora-only and refuses
 elsewhere. It probes once (`lspci` for a vendor-`10de` display controller —

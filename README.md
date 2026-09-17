@@ -40,13 +40,15 @@ Links `home/` + `home-arch/`:
 ```
 
 **Fedora** — Workstation, non-atomic only. Links `home/` + `home-fedora/`;
-NVIDIA drivers install automatically when the hardware is present, and the
-gaming stack is an explicit opt-in:
+NVIDIA drivers install automatically when the hardware is present, the
+gaming stack is an explicit opt-in, and the desktop (vanilla Umbriel plus
+native Noctalia) and greeter (Noctalia Greeter) provision below:
 
 ```bash
 ./dot init
 ./dot doctor
-./dot fedora-setup   # asks once about the gaming stack (Steam, GameMode, MangoHud)
+./dot fedora-setup   # desktop + greeter; asks once about the gaming stack (Steam, GameMode, MangoHud)
+./dot fedora-check
 ```
 
 Rerun `init` to reapply the setup.
@@ -63,7 +65,7 @@ Rerun `init` to reapply the setup.
 | `./dot package remove NAME` | Drop the bundle line, then uninstall |
 | `./dot benchmark-shell` | Time fish startup; warns past 100 ms |
 | `./dot nvidia` | Fedora NVIDIA drivers; no-op without the hardware |
-| `./dot fedora-setup` | Provision this Fedora machine (opt-in gaming step) |
+| `./dot fedora-setup` | Provision this Fedora machine (gaming opt-in, desktop, greeter) |
 | `./dot fedora-check` | Verify Fedora provisioning without changing anything |
 
 ## Arch system
@@ -89,7 +91,9 @@ Edit the repo, then run `./dot stow`:
 
 - Shared: [`home/`](home/) — Fish ([`config.fish`](home/.config/fish/config.fish)), Git, nvim, agent skills
 - Arch: [`home-arch/`](home-arch/) — monitors in [`hypr-user.lua`](home-arch/.config/caelestia/hypr-user.lua), night light in [`hypr-vars.lua`](home-arch/.config/caelestia/hypr-vars.lua) (`automaticNightLight`; <kbd>Super</kbd>+<kbd>Shift</kbd>+<kbd>N</kbd> toggles)
-- Fedora: [`home-fedora/`](home-fedora/) — standalone Ghostty preferences (no Hyprland configuration)
+- Fedora: [`home-fedora/`](home-fedora/) — standalone Ghostty preferences plus
+  the vanilla Umbriel entrypoint (packaged defaults, noctalia autostart, sole
+  Mod+K cheatsheet override)
 
 On Arch, `~/.config/hypr/` is generated output; edit the sources above.
 

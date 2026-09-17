@@ -20,5 +20,6 @@ complete -c dot -n '__fish_seen_subcommand_from arch-setup' -l only -r -d 'Comma
 complete -c dot -n '__fish_seen_subcommand_from arch-setup' -l replace-display-manager -d 'Displace incumbent display manager'
 complete -c dot -n '__fish_seen_subcommand_from arch-check' -l only -r -d 'Comma-separated provisioning steps'
 complete -c dot -n '__fish_seen_subcommand_from fedora-setup' -l only -r -d 'Comma-separated provisioning steps'
+complete -c dot -n '__fish_seen_subcommand_from fedora-setup' -l replace-display-manager -d 'Displace incumbent display manager'
 complete -c dot -n '__fish_seen_subcommand_from fedora-check' -l only -r -d 'Comma-separated provisioning steps'
 complete -c dot -n '__fish_seen_subcommand_from benchmark-shell' -s r -l runs -r -d 'Number of runs (1-100)'

@@ -5,15 +5,20 @@ shared `home/`, one bundle per distro, plus an Arch-only `home-arch/` overlay.
 Arch system provisioning lives behind `./dot arch-setup`/`arch-check`
 (idempotent; re-running repairs). Fedora system provisioning lives behind
 `./dot fedora-setup`/`fedora-check` (same machinery: canonical steps,
-`--only` filters, idempotent repair); today that is one opt-in gaming step
-(`lib/fedora-gaming.sh`, official packages only, NVIDIA still installs
-through init/update). Atomic editions stay out of scope. README.md
+`--only` filters, idempotent repair): one opt-in gaming step
+(`lib/fedora-gaming.sh`, official packages only), one desktop step
+(`lib/fedora-desktop.sh`: vanilla Umbriel plus native Noctalia, Terra
+bootstrap for the compositor, Fedora packages otherwise), and one greeter
+step (`lib/fedora-greeter.sh`: greetd plus Noctalia Greeter, GDM/GNOME kept
+installed for recovery, explicit `--replace-display-manager` to switch).
+NVIDIA still installs through init/update. Atomic editions stay out of scope. README.md
 covers usage; these are the rules that are easy to break.
 
 - **Never edit `~` directly.** Edit `home/`, then `./dot stow`. Conflicts are
   overwritten without backup, deliberately — don't add backup logic (home files never do). The `/etc` and bootloader backups inside
   `lib/arch-*.sh` are the narrow exception: boot and login configs get one
-  restorable backup. Second narrow exception: the two compositor-owned user
+  restorable backup. The one-time `/etc/greetd/config.toml` backup inside
+  `lib/fedora-greeter.sh` is the same narrow exception on Fedora. Second narrow exception: the two compositor-owned user
   files (`~/.config/caelestia/hypr-user.lua`, `hypr-vars.lua`) deploy once as
   real files and are edited in place — stow can never own paths the running
   compositor recreates, and upstream defines both as user-edited.
@@ -62,6 +67,7 @@ remains in the exclusion list only for legacy-link cleanup.
   before elevation, network, or any mutation. Keep it that way.
 - **Display-manager changes need the explicit flag.** `arch-setup` refuses
   beside an incumbent DM; only `--replace-display-manager` disables one.
+  `fedora-setup` follows the same contract for its greeter step.
   Limine entries are only added, never removed or reordered.
 - **No hardcoded machine layout.** GPU environment stays conditional on
   detected hardware; no PCI IDs, disks, or hostnames in modules.

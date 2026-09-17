@@ -26,7 +26,7 @@ User decisions collected during research:
 **This decision supersedes customization proposals elsewhere in this research document.** The user wants the least additional desktop complexity possible: vanilla Umbriel, vanilla Noctalia shell and vanilla Noctalia Greeter. Historical parity tables below are research, not an implementation backlog.
 
 - Use the chosen packages' defaults for layout, workspaces, gestures, appearance, shell widgets/panels, greeter appearance and supported desktop services.
-- Preserve packaged keybindings. The **only personal keybinding override is Super+K → Umbriel's native `cheatsheet-toggle`**, as explicitly requested. Document the packaged terminal shortcut (Super+Enter → Kitty in the inspected example); ensure its executable is available rather than changing the shortcut. See [the final keybind decision](fedora-noctalia-keybinds.md).
+- Preserve packaged keybindings. The personal keybinding overrides are Super+K → Umbriel's native `cheatsheet-toggle` plus Super+Enter → ghostty (overriding the packaged kitty default per the 2026-09-17 direction). See [the final keybind decision](fedora-noctalia-keybinds.md).
 - Add only missing installation/session wiring: package sources and dependencies, one shell startup path, packaged session launcher, necessary portal selection and greetd configuration. Prefer package-provided integration; add nothing already supplied correctly.
 - No custom themes, palette synchronization, Ghostty theme integration, widget arrangements, app/window rules, opacity/PiP helpers, scratchpad schemes, extra shortcut banks or Hyprland behavior ports.
 - No additional plugins, daemons or services merely to reproduce the Arch setup. Required dependencies and working authentication, locking and session cleanup are not optional “bloat.” Verify them before cutover; do not invent a replacement architecture.
@@ -35,7 +35,7 @@ User decisions collected during research:
 - Application packages and shared application configurations are a separate concern. Do not expand, purge or retheme them as a side effect of desktop provisioning. The user's application choices do not justify extra compositor configuration.
 - Keep the previously approved GNOME/GDM recovery path. “Least bloat” is not authorization to remove the retained recovery desktop or prune unrelated packages.
 
-**Revised implementation sequence:** verify package compatibility → install the native stack and its required dependencies → add only missing session/login integration and the single cheatsheet override → validate on both machines with GDM retained → perform the explicitly authorized greetd cutover → document defaults and rollback.
+**Revised implementation sequence:** verify package compatibility → install the native stack and its required dependencies → add only missing session/login integration and the two personal overrides → validate on both machines with GDM retained → perform the explicitly authorized greetd cutover → document defaults and rollback.
 
 The migration is feasible in principle, but package compatibility, physical GPU behavior and secure login/lock integration remain acceptance gates. No configuration deployment is authorized by this plan.
 

@@ -1,7 +1,7 @@
 # Fedora keybind decision: vanilla Umbriel
 
 Status: planning only; no configuration deployed.
-Updated: 2026-09-16.
+Updated: 2026-09-17 (Super+Enter now ghostty per explicit user request).
 
 ## Final user direction
 
@@ -9,7 +9,7 @@ Use the most vanilla packaged Umbriel experience possible. This replaces all ear
 
 Only two things need to be obvious:
 
-- **Super+Enter opens the terminal.** The inspected upstream packaged example binds `Mod+Return` to `spawn:kitty`. Install the verified Fedora Kitty package and retain that default. Ghostty may remain available independently; do not override the terminal binding just to preserve old habits.
+- **Super+Enter opens ghostty.** The inspected upstream packaged example binds `Mod+Return` to `spawn:kitty`. Per the 2026-09-17 direction the entrypoint overrides it to `spawn:ghostty` (Terra `ghostty`, verified 1.3.1 in Terra 44); kitty is not installed by the desktop step.
 - **Super+K opens Umbriel's native cheatsheet**, using `cheatsheet-toggle`. No Fuzzel menu, generated shortcut list, plugin or helper script.
 
 All other compositor bindings, scrolling behavior, workspace behavior, gestures and shipped defaults remain vanilla. In particular, Super+T remains floating and Super+L remains focus-right. Super+K necessarily replaces the default Vim-style focus-up shortcut; Super+Up remains available.
@@ -23,9 +23,10 @@ Where the selected package supports the documented include behavior, a small rep
 ```toml
 [keybinds]
 "Mod+K" = { action = "cheatsheet-toggle", repeat = false }
+"Mod+Return" = { action = "spawn:ghostty", repeat = false }
 ```
 
-This excerpt is the sole personal keybinding change, not a complete standalone configuration. Verify the package's installed config path and include/override behavior before implementing. Do not include the user entrypoint itself recursively. Do not copy the whole default map into a separately maintained personal map unless packaging makes inclusion unsuitable.
+This excerpt holds the two personal keybinding changes, not a complete standalone configuration. Verify the package's installed config path and include/override behavior before implementing. Do not include the user entrypoint itself recursively. Do not copy the whole default map into a separately maintained personal map unless packaging makes inclusion unsuitable.
 
 Use `Mod` consistently with the upstream example. In a native DRM session it defaults to Super. Do not add a competing literal `Super+K` beside upstream `Mod+K`.
 
@@ -54,11 +55,11 @@ Inspected upstream snapshot: `32cc131278cd296b70c41a8e5e1460a98df6a26e`.
 Before cutover:
 
 1. Inspect the actual Fedora package defaults. Confirm terminal command, config path and native cheatsheet action; report any change instead of silently relying on this moving snapshot.
-2. Verify the Fedora terminal package provides the default executable.
+2. Verify the Terra ghostty package provides the override executable.
 3. Validate the small entrypoint with the installed Umbriel validator.
-4. Test Super+Enter opens one usable terminal and Super+K opens the native active-bindings overlay without repeated toggling while held.
+4. Test Super+Enter opens one usable ghostty terminal and Super+K opens the native active-bindings overlay without repeated toggling while held.
 5. Confirm Super+Up still focuses upward, Super+T floats, and Super+L focuses right.
-6. Confirm the final map differs from the packaged defaults only at Mod+K; no unintended duplicate effective binding remains.
+6. Confirm the final map differs from the packaged defaults only at Mod+K and Mod+Return; no unintended duplicate effective binding remains.
 7. Test on both keyboard layouts and both target machines. No runtime validation has yet been performed.
 
 The migration plan's historical parity matrix is reference material only. **This document is the keybind implementation decision.**
