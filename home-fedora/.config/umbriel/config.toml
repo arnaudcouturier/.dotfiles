@@ -25,6 +25,7 @@ autostart = ["noctalia"]
 "Mod+Return" = { action = "spawn:ghostty", repeat = false }
 "Mod+E" = { action = "spawn:nautilus", repeat = false }
 "Mod+W" = { action = "spawn:brave-origin", repeat = false }
+"Menu" = { action = "keyboard-layout-next", repeat = false }
 "Mod+P" = { action = "spawn:noctalia msg screenshot-region", repeat = false }
 "Mod+Shift+P" = { action = "spawn:noctalia msg screenshot-fullscreen", repeat = false }
 "Mod+Shift+A" = { action = "spawn:noctalia msg screenshot-annotate", repeat = false }
@@ -62,7 +63,6 @@ vrr = "disabled"       # disabled, always, or fullscreen
 [input.keyboard]
 layout = "us,ca"
 variant = ",multix"
-options = "grp:alt_shift_toggle"
 # [input.touchpad]
 # natural_scroll = true
 # [input.keyboard]
