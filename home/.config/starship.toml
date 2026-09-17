@@ -1,0 +1,19 @@
+# Shared Starship prompt. Fedora installs the binary via the atim COPR
+# (packages/fedora.bundle); Arch Caelestia points STARSHIP_CONFIG at its own
+# file instead, so this file is the Fedora/default prompt.
+format = "$directory$git_branch$git_status$character"
+
+[character]
+success_symbol = "[➜](bold green)"
+error_symbol = "[➜](bold red)"
+
+[directory]
+truncation_length = 3
+truncate_to_repo = true
+style = "bold cyan"
+
+[git_branch]
+style = "bold purple"
+
+[git_status]
+style = "bold yellow"
