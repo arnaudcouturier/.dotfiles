@@ -87,6 +87,10 @@ the flag. The previous `/etc/greetd` config gets one
 `./dot fedora-check [--only step,...]` verifies without changing anything; on a
 fresh host it reports what setup will add.
 
+Spotify theming is manual and unprovisioned by design (vanilla family,
+Noctalia owns the generated files): see
+[spicetify-noctalia.md](spicetify-noctalia.md).
+
 NVIDIA drivers are not a step: they install through `init`/`update` (and
 `./dot nvidia`) when the hardware probe finds an NVIDIA display controller,
 following the Fedora gaming docs.

@@ -4,7 +4,8 @@
 # Installs the Noctalia-family session on Fedora: the Terra umbriel-nightly
 # compositor (its dependencies pull the Umbriel portal backend and
 # xwayland-satellite), the Fedora noctalia shell, ghostty for the Mod+Return
-# terminal (overriding the packaged kitty default), the GTK portal fallback
+# terminal (overriding the packaged kitty default), the Terra bibata cursor
+# theme named by home-fedora's environment.d, the GTK portal fallback
 # for file choosers, and gnome-keyring for Secret Service. No custom themes,
 # widget layouts, app rules, or Hyprland behavior ports: packaged defaults
 # rule, and the two personal keybindings (Mod+K cheatsheet, Mod+Return
@@ -31,6 +32,7 @@ readonly FEDORA_DESKTOP_PKGS=(
   umbriel-nightly
   noctalia
   ghostty
+  bibata-cursor-theme
   xwayland-satellite
   xdg-desktop-portal-gtk
   gnome-keyring

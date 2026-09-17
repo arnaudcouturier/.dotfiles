@@ -99,7 +99,7 @@ GREETER_LIB="${TEST_ARCH_REPO_ROOT}/lib/fedora-greeter.sh"
 WORK="${TEST_ARCH_SANDBOX}/work"
 mkdir -p -- "${WORK}"
 reset_calls() { : >"$(test_arch_calls_log)"; }
-DESKTOP_PKGS='umbriel-nightly noctalia ghostty xwayland-satellite xdg-desktop-portal-gtk gnome-keyring gnome-keyring-pam'
+DESKTOP_PKGS='umbriel-nightly noctalia ghostty bibata-cursor-theme xwayland-satellite xdg-desktop-portal-gtk gnome-keyring gnome-keyring-pam'
 GREETER_PKGS='greetd noctalia-greeter gdm gnome-shell gnome-session-wayland-session accountsservice'
 
 # Sandbox greeter paths: no live /etc or /var avoids the live-path tripwire.
