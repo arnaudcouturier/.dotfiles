@@ -46,7 +46,7 @@ mode = "3840x2160@239.76"  # WIDTHxHEIGHT or WIDTHxHEIGHT@HZ
 #position = [0, 0]        # logical top-left; omit for automatic placement
 scale = 1            # logical size is mode size divided by scale
 vrr = "disabled"       # disabled, always, or fullscreen
-# hdr = "auto"           # off, on, auto, or fullscreen; Docs: https://docs.noctalia.dev/umbriel/outputs/#hdr
+hdr = "off"           # off, on, auto, or fullscreen; Docs: https://docs.noctalia.dev/umbriel/outputs/#hdr
 # sdr_white = 203        # SDR reference white in cd/m2 during HDR, 80-1000
 # workspaces = 5           # fixed count; omit for dynamic workspaces
 
@@ -67,6 +67,14 @@ vrr = "disabled"       # disabled, always, or fullscreen
 [input.keyboard]
 layout = "us,ca"
 variant = ",multix"
+# Cursor: explicit theme+size so the compositor does not depend on env
+# propagation. theme="" would fall back to $XCURSOR_THEME, but size always
+# comes from here (packaged default is 24); keep in sync with
+# environment.d/10-cursor.conf and gsettings cursor-size.
+# Applies on `umbriel msg config-reload`. Docs: https://docs.noctalia.dev/umbriel/input/#cursor
+[input.cursor]
+theme = "Bibata-Modern-Ice"
+size = 32
 # [input.touchpad]
 # natural_scroll = true
 # [input.keyboard]
