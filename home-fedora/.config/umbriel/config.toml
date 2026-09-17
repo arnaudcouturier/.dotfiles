@@ -56,9 +56,13 @@ vrr = "disabled"       # disabled, always, or fullscreen
 # mode = "scrolling"  # scrolling, dwindle, or master
 # gap = 8             # logical pixels between tiles, 0-500
 
-# Input: touchpad/keyboard examples. Device names for per-device
-# [[input.device]] overrides come from `libinput list-devices`.
+# Input: US default plus Canadian Multilingual Standard (CSA), Alt+Shift toggles.
+# Device names for per-device [[input.device]] overrides come from `libinput list-devices`.
 # Docs: https://docs.noctalia.dev/umbriel/input/
+[input.keyboard]
+layout = "us,ca"
+variant = ",multix"
+options = "grp:alt_shift_toggle"
 # [input.touchpad]
 # natural_scroll = true
 # [input.keyboard]
