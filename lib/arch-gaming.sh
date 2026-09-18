@@ -111,5 +111,13 @@ arch_gaming_verify() {
     id -nG "$(id -un)" 2>/dev/null | tr ' ' '\n' | grep -Fxq gamemode \
       || { log_error "User not in the gamemode group. Run ./dot arch-setup --only gaming, then re-login."; failed=1; }
   fi
+  # Steam's launcher owns ~/.steam/steam as a symlink to its data dir. A
+  # real directory there (a skin copied in before Steam's first launch does
+  # this) breaks the bootstrap beyond self-repair and Steam aborts with
+  # "Couldn't set up Steam data". Report only: skins inside are user data.
+  if [[ -e "${HOME}/.steam/steam" && ! -L "${HOME}/.steam/steam" ]]; then
+    log_error "Steam data link shadowed: ${HOME}/.steam/steam is a directory, not a symlink. Move it aside, launch Steam once, then re-run ./dot arch-check."
+    failed=1
+  fi
   return "${failed}"
 }

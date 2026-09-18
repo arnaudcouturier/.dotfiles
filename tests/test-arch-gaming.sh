@@ -217,5 +217,17 @@ set -e
 test_arch_assert_contains "${WORK}/verify-group.out" 'gamemode group' \
   'verify must report the missing group membership'
 
+# --- Verify: shadowed Steam data link fails distinctly. ---
+export TEST_INSTALLED="${ALL_PKGS}" TEST_GROUPS='testuser gamemode'
+mkdir -p "${HOME}/.steam/steam"
+set +e
+arch_gaming_verify >"${WORK}/verify-steamdatalink.out" 2>&1
+verify_status=$?
+set -e
+((verify_status != 0)) || test_arch_die 'shadowed Steam data link must fail verification'
+test_arch_assert_contains "${WORK}/verify-steamdatalink.out" '.steam/steam' \
+  'verify must report the shadowed Steam data link'
+rm -rf "${HOME}/.steam"
+
 test_arch_assert_no_live_paths 'gaming stack'
 printf 'Gaming stack is opt-in, repairs idempotently, and verifies distinctly.\n'
