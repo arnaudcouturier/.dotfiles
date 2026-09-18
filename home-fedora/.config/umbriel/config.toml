@@ -50,6 +50,13 @@ hdr = "off"           # off, on, auto, or fullscreen; Docs: https://docs.noctali
 # sdr_white = 203        # SDR reference white in cd/m2 during HDR, 80-1000
 # workspaces = 5           # fixed count; omit for dynamic workspaces
 
+# Laptop panel placeholder (this machine, 2026-09-18 `umbriel outputs`):
+# eDP-1 "Samsung Display Corp. 0x4215 0x0000FFA1", preferred 2880x1800@120.
+# Monitor form so it applies only to this panel; active on this laptop.
+[output."Samsung Display Corp. 0x4215 0x0000FFA1"]
+mode = "2880x1800@120"
+scale = 1.5            # starting point for 14" 2880x1800; adjust to taste
+
 # Workspaces: global behavior (per-output inventory lives in [output.*]).
 # Docs: https://docs.noctalia.dev/umbriel/workspaces/
 # [workspaces]
