@@ -110,6 +110,11 @@ export FEDORA_GREETER_USER='greeter'
 export FEDORA_GREETER_HOME="${WORK}/greeter-home"
 export TEST_SYSTEMD_DEFAULT='multi-user.target' TEST_GREETER_EXISTS=0
 
+# Terra repo fixture: desktop verify requires the pinned-Equibop exclusion,
+# so it reads this fixture instead of live /etc.
+export FEDORA_TERRA_REPO_FILE="${WORK}/terra.repo"
+printf '[terra]\nname=Terra 44\nenabled=1\nexcludepkgs=equibop\n' >"${FEDORA_TERRA_REPO_FILE}"
+
 # Stowed Umbriel entrypoint fixture: the repo's real file, as stow deploys it.
 mkdir -p -- "${HOME}/.config/umbriel"
 cp -- "${TEST_ARCH_REPO_ROOT}/home-fedora/.config/umbriel/config.toml" "${HOME}/.config/umbriel/config.toml"

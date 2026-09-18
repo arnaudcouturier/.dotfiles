@@ -41,6 +41,10 @@ remains in the exclusion list only for legacy-link cleanup.
   packages install before anything else, so the client is there in time.
 - **Prefer the route that brings updates**: vendor repository > COPR >
   verified Flathub > pinned RPM > AppImage > npm, and `repo` over `aur`.
+  A pinned `rpm` whose name a community repo (Terra) also ships needs that
+  repo to exclude the name — Terra tags higher (1.fc44 beats the vendor's
+  bare 1), so every upgrade would swap the pin. The exclusion lives in the
+  module that owns the repo, and its verify step fails while it is absent.
 - **npm entries install with `--ignore-scripts`.** The `npm-scripts` verb is
   the deliberate exemption, for a package whose postinstall *is* the install
   (it fetches the platform binary). Don't file an entry there to make an

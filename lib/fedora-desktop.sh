@@ -39,16 +39,32 @@ readonly FEDORA_DESKTOP_PKGS=(
   gnome-keyring-pam
 )
 
-# Bootstrap the Terra repository once via its release package. Idempotent:
-# dnf reports the release package present and re-running skips the bootstrap.
+# Bootstrap the Terra repository once via its release package, then pin the
+# names the bundle installs pinned for. Idempotent: a present release
+# package skips the bootstrap, and the exclusion converges every run, so a
+# machine that enabled Terra before the exclusion existed still repairs.
 fedora_desktop_ensure_terra() {
   if rpm -q terra-release >/dev/null 2>&1; then
     log_ok 'Terra repository already configured.'
-    return 0
+  else
+    log_step 'Enabling Terra (community) for umbriel-nightly'
+    sudo dnf install -y --nogpgcheck \
+      --repofrompath "${FEDORA_DESKTOP_TERRA_REF}" terra-release
   fi
-  log_step 'Enabling Terra (community) for umbriel-nightly'
-  sudo dnf install -y --nogpgcheck \
-    --repofrompath "${FEDORA_DESKTOP_TERRA_REF}" terra-release
+  fedora_desktop_exclude_pinned_from_terra
+}
+
+# Terra rebuilds Equibop at release 1.fc44, above the Equicord vendor RPM's
+# bare 1 — so every `dnf upgrade` swaps the bundle's pinned vendor build
+# for Terra's, whose update-alternatives %postun then deletes
+# /usr/bin/equibop and leaves both launcher entries dead (and dot's own
+# URL-vs-installed EVR check reads the vendor build as older, so init never
+# swaps back). Exclude the name from Terra so the pinned route sticks; the
+# compositor stack still resolves there. A direct `dnf install <URL>`
+# bypasses the exclusion, so pinned installs and URL bumps keep working.
+fedora_desktop_exclude_pinned_from_terra() {
+  log_step 'Excluding Equibop from Terra (the bundle pins the vendor RPM)'
+  sudo dnf config-manager setopt terra.excludepkgs=equibop
 }
 
 # Install (or repair) the desktop stack. Safe to re-run: dnf converges.
@@ -75,6 +91,18 @@ fedora_desktop_verify() {
     command -v "${cmd}" >/dev/null 2>&1 \
       || { log_error "Desktop binary missing: ${cmd}. Run ./dot fedora-setup --only desktop."; failed=1; }
   done
+  # The bundle pins Equibop to the Equicord vendor RPM while Terra carries
+  # a higher-tagged rebuild that would shadow it: the exclusion must be
+  # present or the next upgrade swaps the working build for a dead one.
+  # Scoped to the [terra] section — an exclusion elsewhere (e.g. the
+  # disabled -source section) does not protect upgrades. The path is a
+  # test seam; production always reads the live repo configuration.
+  local terra_repo="${FEDORA_TERRA_REPO_FILE:-/etc/yum.repos.d/terra.repo}"
+  if ! sed -n '/^\[terra\]/,/^\[/p' "${terra_repo}" 2>/dev/null \
+    | grep -Eq '^[[:space:]]*excludepkgs[[:space:]]*=([^#]*[,[:space:]])?equibop([,[:space:]]|$)'; then
+    log_error "Terra still serves equibop (the pinned vendor RPM would be shadowed). Run ./dot fedora-setup --only desktop."
+    failed=1
+  fi
   local config="${HOME}/.config/umbriel/config.toml"
   if [[ ! -f ${config} ]]; then
     log_error "Umbriel entrypoint missing: ${config}. Run ./dot stow."
