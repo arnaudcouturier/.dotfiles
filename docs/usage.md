@@ -56,11 +56,14 @@ or stow:
 1. `gaming` — opt-in Steam stack: asks once (default No) and skips quietly on
    No or without a terminal. Installs only vendor-backed packages: Steam from
    RPM Fusion (the route NVIDIA drivers already use), GameMode, MangoHud,
-   GOverlay, Gamescope and Protontricks from Fedora's own repos. No third-party
-   COPRs: vkbasalt and ProtonPlus have no official Fedora or RPM Fusion
-   package and are deliberately excluded. Fedora resolves the 32-bit game
-   libraries itself; there is no multilib toggle, and GameMode needs no group
-   membership on Fedora.
+   GOverlay, Gamescope and Protontricks from Fedora's own repos, plus
+   `kernel-modules-extra` for the gamepad drivers (xpad for wired Xbox pads
+   and friends — Fedora splits them out of the kernel where Arch ships them
+   built in; steam pulls `steam-devices` for the udev rules). No third-party
+   COPRs: vkbasalt, ProtonPlus and game-devices-udev have no official Fedora
+   or RPM Fusion package and are deliberately excluded. Fedora resolves the
+   32-bit game libraries itself; there is no multilib toggle, and GameMode
+   needs no group membership on Fedora.
 2. `desktop` — vanilla Umbriel plus the native Noctalia shell: `umbriel-nightly`
    from the community Terra repository (bootstrapped once via its release
    package; later transactions keep signature checks), `noctalia`, `ghostty`

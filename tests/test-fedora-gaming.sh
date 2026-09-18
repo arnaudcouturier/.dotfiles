@@ -56,7 +56,7 @@ GAMING_LIB="${TEST_ARCH_REPO_ROOT}/lib/fedora-gaming.sh"
 WORK="${TEST_ARCH_SANDBOX}/work"
 mkdir -p -- "${WORK}"
 reset_calls() { : >"$(test_arch_calls_log)"; }
-ALL_PKGS='steam gamemode goverlay gamescope mangohud protontricks'
+ALL_PKGS='steam gamemode goverlay gamescope mangohud protontricks kernel-modules-extra'
 
 # --- Static: the official package set is pinned in the module. ---
 for pkg in ${ALL_PKGS}; do
@@ -163,6 +163,18 @@ set -e
 ((verify_status != 0)) || test_arch_die 'partial stack must fail verification'
 test_arch_assert_contains "${WORK}/verify-partial.out" 'Gaming package missing: gamescope' \
   'verify must name the missing package'
+
+# --- Verify: shadowed Steam data link fails distinctly. ---
+export TEST_INSTALLED="${ALL_PKGS}"
+mkdir -p "${HOME}/.steam/steam"
+set +e
+fedora_gaming_verify >"${WORK}/verify-steamdatalink.out" 2>&1
+verify_status=$?
+set -e
+((verify_status != 0)) || test_arch_die 'shadowed Steam data link must fail verification'
+test_arch_assert_contains "${WORK}/verify-steamdatalink.out" '.steam/steam' \
+  'verify must report the shadowed Steam data link'
+rm -rf "${HOME}/.steam"
 
 test_arch_assert_no_live_paths 'fedora gaming stack'
 printf 'Fedora gaming stack is opt-in, official-only, repairs idempotently, and verifies distinctly.\n'
