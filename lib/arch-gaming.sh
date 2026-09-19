@@ -100,8 +100,18 @@ arch_gaming_setup() {
 arch_gaming_verify() {
   local failed=0 pkg
   if ! arch_gaming_installed; then
-    log_info 'arch-gaming: gaming stack not selected.'
-    return 0
+    # Steam anchors "selected", but its absence only means declined when no
+    # sibling is installed either. A ripped-out steam beside installed
+    # siblings is partial drift, not a declined opt-in: fall through and
+    # name each missing package.
+    local any=0
+    for pkg in "${ARCH_GAMING_REPO_PKGS[@]}" "${ARCH_GAMING_AUR_PKGS[@]}"; do
+      pacman -Q -- "${pkg}" >/dev/null 2>&1 && { any=1; break; }
+    done
+    if ((any == 0)); then
+      log_info 'arch-gaming: gaming stack not selected.'
+      return 0
+    fi
   fi
   for pkg in "${ARCH_GAMING_REPO_PKGS[@]}" "${ARCH_GAMING_AUR_PKGS[@]}"; do
     pacman -Q -- "${pkg}" >/dev/null 2>&1 \

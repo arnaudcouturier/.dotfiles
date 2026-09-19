@@ -207,6 +207,16 @@ set -e
 test_arch_assert_contains "${WORK}/verify-partial.out" 'Gaming package missing: gamescope' \
   'verify must name the missing package'
 
+# --- Verify: steam ripped out but siblings remain is drift, not "not selected". ---
+export TEST_INSTALLED='gamemode goverlay mangohud protontricks' TEST_GROUPS='testuser gamemode'
+set +e
+arch_gaming_verify >"${WORK}/verify-steam-ripped.out" 2>&1
+verify_status=$?
+set -e
+((verify_status != 0)) || test_arch_die 'steam-absent partial stack must fail verification'
+test_arch_assert_contains "${WORK}/verify-steam-ripped.out" 'Gaming package missing: steam' \
+  'verify must name steam when siblings remain'
+
 # --- Verify: installed gamemode without membership fails distinctly. ---
 export TEST_INSTALLED="${ALL_PKGS}" TEST_GROUPS='testuser'
 set +e

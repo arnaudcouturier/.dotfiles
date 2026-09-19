@@ -89,8 +89,19 @@ fedora_gaming_verify() {
   [[ ${DISTRO:-} == fedora ]] || return 1
   local failed=0 pkg
   if ! fedora_gaming_installed; then
-    log_info 'fedora-gaming: gaming stack not selected.'
-    return 0
+    # Steam anchors "selected", but its absence only means declined when no
+    # sibling is installed either. A ripped-out steam beside installed
+    # siblings (e.g. a --allowerasing swap took it as a dependency) is
+    # partial drift, not a declined opt-in: fall through and name each
+    # missing package.
+    local any=0
+    for pkg in "${FEDORA_GAMING_PKGS[@]}"; do
+      rpm -q -- "${pkg}" >/dev/null 2>&1 && { any=1; break; }
+    done
+    if ((any == 0)); then
+      log_info 'fedora-gaming: gaming stack not selected.'
+      return 0
+    fi
   fi
   for pkg in "${FEDORA_GAMING_PKGS[@]}"; do
     rpm -q -- "${pkg}" >/dev/null 2>&1 \
