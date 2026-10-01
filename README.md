@@ -51,6 +51,20 @@ native Noctalia) and greeter (Noctalia Greeter) provision below:
 ./dot fedora-check
 ```
 
+**Ubuntu or Debian, including WSL** — installs the CLI-focused bundle and
+links the shared terminal/editor configuration. On Ubuntu, run this in the
+WSL distribution:
+
+```bash
+./dot init
+```
+
+This installs the terminal tools, GitHub CLI, Claude Code, Codex, OpenCode,
+Pi, and the curated skills. It does not provision a desktop. The installer
+adds the signed GitHub CLI and NodeSource APT repositories so the current
+vendor CLIs and skills can install cleanly. Review the Git identity in
+[`home/.config/git/config`](home/.config/git/config) before running setup.
+
 Rerun `init` to reapply the setup.
 
 ## Commands
@@ -98,4 +112,6 @@ Edit the repo, then run `./dot stow`:
 On Arch, `~/.config/hypr/` is generated output; edit the sources above.
 
 Packages: [`arch`](packages/arch.bundle) · [`fedora`](packages/fedora.bundle) —
-one commented line per entry. Verbs and policy: [`docs/usage.md`](docs/usage.md).
+one commented line per entry. Debian/Ubuntu CLI packages live in
+[`debian`](packages/debian.bundle). Verbs and policy:
+[`docs/usage.md`](docs/usage.md).

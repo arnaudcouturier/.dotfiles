@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# dot — the CLI entry point. Arch Linux and Fedora, opinionated, idempotent.
+# dot — the CLI entry point. Arch/Fedora provisioning, plus shared user setup
+# on Debian and Ubuntu.
 # `./dot help` lists the commands; README.md explains the layout,
 # packages/<distro>.bundle holds the package list, and lib/arch-*.sh holds
 # Arch system provisioning (sourced lazily, Arch commands only).
@@ -19,7 +20,7 @@ readonly ARCH_LIB_DIR="${DOTFILES_DIR}/lib"
 readonly APPIMAGE_DIR="${HOME}/Applications"
 readonly DESKTOP_DIR="${HOME}/.local/share/applications"
 
-# Set by detect_distro: arch or fedora.
+# Set by detect_distro: arch, fedora, or debian (Debian and Ubuntu).
 DISTRO=''
 BUNDLE_FILE=''
 
@@ -39,7 +40,7 @@ die() { log_error "$*"; exit 1; }
 
 usage() {
   cat <<'EOF'
-dot — install packages and link dotfiles on Arch and Fedora.
+dot — install packages and link dotfiles on Arch, Fedora, Debian, and Ubuntu.
 
   ./dot init             helpers, packages, herdr, stow, plugins, integrations, fish shell
   ./dot update           git pull --rebase, then everything init does
@@ -68,8 +69,9 @@ provisions the system afterwards. On Fedora, ./dot init links user files;
 ./dot fedora-setup provisions the desktop and greeter, plus the opt-in
 gaming stack.
 
-The distro picks the bundle: packages/arch.bundle or packages/fedora.bundle.
-Flags name the bundle verb; without one an entry is a repository package.
+The distro picks the bundle: packages/arch.bundle, packages/fedora.bundle,
+or packages/debian.bundle (Debian and Ubuntu). Flags name the bundle verb;
+without one an entry is a repository package.
 EOF
 }
 
@@ -113,10 +115,11 @@ begin_elevation() {
 }
 
 # Pick this machine's bundle. Arch derivatives are accepted through ID_LIKE;
-# anything that is neither Arch nor Fedora is rejected before any change.
+# Debian and Ubuntu share one user-space bundle; unsupported distributions
+# are rejected before any change.
 detect_distro() {
   [[ -n ${DISTRO} ]] && return 0
-  [[ -r /etc/os-release ]] || die '/etc/os-release not found; this repo supports Arch and Fedora.'
+  [[ -r /etc/os-release ]] || die '/etc/os-release not found; this repo supports Arch, Fedora, Debian, and Ubuntu.'
   local ids
   # os-release is a shell fragment by spec; read it in a subshell.
   # shellcheck source=/dev/null
@@ -124,7 +127,9 @@ detect_distro() {
   case " ${ids} " in
     *' arch '*) DISTRO=arch ;;
     *' fedora '*) DISTRO=fedora ;;
-    *) die "Unsupported distro: ${ids:-unknown}. This repo supports Arch and Fedora." ;;
+    *' debian '*) DISTRO=debian ;;
+    *' ubuntu '*) DISTRO=debian ;;
+    *) die "Unsupported distro: ${ids:-unknown}. This repo supports Arch, Fedora, Debian, and Ubuntu." ;;
   esac
   BUNDLE_FILE="${DOTFILES_DIR}/packages/${DISTRO}.bundle"
 }
@@ -167,9 +172,11 @@ require_verb_for_distro() {
     # npm is the vendor route for JS-only tools with no repo or AUR entry;
     # both bundles may use it. rpm/repofile/copr/flatpak stay Fedora-only.
     arch:repo | arch:aur | arch:appimage | arch:npm | arch:npm-scripts | fedora:repo) return 0 ;;
+    debian:repo | debian:appimage | debian:npm | debian:npm-scripts) return 0 ;;
     fedora:aur) die "Verb 'aur' is Arch-only. Give packages/fedora.bundle a verified Fedora source instead." ;;
     fedora:*) return 0 ;;
-    *) die "Verb '$1' is Fedora-only. packages/arch.bundle takes repo, aur, appimage, npm, or npm-scripts." ;;
+    debian:*) die "Verb '$1' is not supported on Debian/Ubuntu. packages/debian.bundle takes repo, appimage, npm, or npm-scripts." ;;
+    *) die "Verb '$1' is not supported on ${DISTRO}. Check its packages/${DISTRO}.bundle policy." ;;
   esac
 }
 
@@ -356,6 +363,7 @@ pkg_query() {
       case "${DISTRO}" in
         arch) pacman -Q -- "${name}" >/dev/null 2>&1 ;;
         fedora) rpm -q -- "${name}" >/dev/null 2>&1 ;;
+        debian) dpkg-query -W -f='${Status}\n' "${name}" 2>/dev/null | grep -Fxq 'install ok installed' ;;
       esac
       ;;
     appimage) [[ -x "$(appimage_path "${url}")" ]] ;;
@@ -384,6 +392,7 @@ pkg_install() {
       case "${DISTRO}" in
         arch) sudo pacman -Syu --needed --noconfirm -- "${name}" ;;
         fedora) sudo dnf install -y "${name}" ;;
+        debian) sudo apt-get install -y -- "${name}" ;;
       esac
       ;;
     aur)
@@ -460,6 +469,7 @@ pkg_remove() {
       case "${DISTRO}" in
         arch) sudo pacman -Rns --noconfirm -- "${name}" || log_warn "pacman could not remove ${name}." ;;
         fedora) sudo dnf remove -y "${name}" || log_warn "dnf could not remove ${name}." ;;
+        debian) sudo apt-get remove -y -- "${name}" || log_warn "apt could not remove ${name}." ;;
       esac
       ;;
     aur) yay -Rns --noconfirm -- "${name}" || log_warn "yay could not remove ${name}." ;;
@@ -478,6 +488,42 @@ pkg_remove() {
     repofile) log_warn "The repository from ${name} stays configured; drop its file from /etc/yum.repos.d if unwanted." ;;
     copr) log_warn "The COPR stays enabled; run: sudo dnf copr disable ${name}" ;;
   esac
+}
+
+# Debian and Ubuntu use the vendors' signed APT repositories for GitHub CLI
+# and Node.js. Node.js 24 supplies a current npm for the agent CLIs and the
+# targeted npm lifecycle-script allow-list used by this installer.
+ensure_debian_cli_repositories() {
+  local key_tmp source_tmp architecture github_source
+  require_command curl
+  require_command dpkg
+
+  key_tmp="$(mktemp "${TMPDIR:-/tmp}/github-cli-key.XXXXXX")" || die 'Failed to create a temporary file for the GitHub CLI key.'
+  CLEANUP_PATH=${key_tmp}
+  curl -fsSL --retry 3 https://cli.github.com/packages/githubcli-archive-keyring.gpg -o "${key_tmp}" \
+    || die 'Failed to download the official GitHub CLI APT key.'
+  sudo install -d -m 0755 /etc/apt/keyrings
+  sudo install -d -m 0755 /etc/apt/sources.list.d
+  sudo install -m 0644 "${key_tmp}" /etc/apt/keyrings/githubcli-archive-keyring.gpg
+  rm -f -- "${key_tmp}"
+  CLEANUP_PATH=''
+
+  architecture="$(dpkg --print-architecture)"
+  github_source="deb [arch=${architecture} signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main"
+  if [[ ! -r /etc/apt/sources.list.d/github-cli.list ]] \
+    || ! grep -Fxq -- "${github_source}" /etc/apt/sources.list.d/github-cli.list; then
+    printf '%s\n' "${github_source}" | sudo tee /etc/apt/sources.list.d/github-cli.list >/dev/null
+  fi
+
+  if ! grep -RqsF -- 'node_24.x' /etc/apt/sources.list.d 2>/dev/null; then
+    source_tmp="$(mktemp "${TMPDIR:-/tmp}/nodesource-setup.XXXXXX.sh")" || die 'Failed to create a temporary file for NodeSource setup.'
+    CLEANUP_PATH=${source_tmp}
+    curl -fsSL --retry 3 https://deb.nodesource.com/setup_24.x -o "${source_tmp}" \
+      || die 'Failed to download the official NodeSource setup script.'
+    sudo bash "${source_tmp}" || die 'NodeSource repository setup failed.'
+    rm -f -- "${source_tmp}"
+    CLEANUP_PATH=''
+  fi
 }
 
 ensure_helpers() {
@@ -513,6 +559,14 @@ ensure_helpers() {
         sudo dnf install -y "${missing[@]}"
       fi
       ;;
+    debian)
+      require_command apt-get
+      log_step 'Installing APT prerequisites and configuring the official Node.js and GitHub CLI repositories'
+      sudo apt-get update
+      sudo apt-get install -y --no-install-recommends ca-certificates curl gnupg stow
+      ensure_debian_cli_repositories
+      sudo apt-get update
+      ;;
   esac
 }
 
@@ -541,6 +595,7 @@ install_packages() {
     case "${DISTRO}" in
       arch) sudo pacman -Syu --needed --noconfirm "${repo_pkgs[@]}" ;;
       fedora) sudo dnf install -y "${repo_pkgs[@]}" ;;
+      debian) sudo apt-get install -y --no-install-recommends "${repo_pkgs[@]}" ;;
     esac
   fi
   if ((${#aur_pkgs[@]} > 0)); then
@@ -569,7 +624,8 @@ install_packages() {
 # Install a tool from its vendor's own install script when missing. Used for
 # tools whose packaged routes are deprecated or absent.
 ensure_upstream() {
-  local cmd=$1 url=$2 tmp found
+  # Vendor scripts default to POSIX sh; pass bash for installers that require it.
+  local cmd=$1 url=$2 interpreter=${3:-sh} tmp found
   export PATH="${HOME}/.local/bin:${PATH}"
   if found="$(command -v "${cmd}" 2>/dev/null)"; then
     log_ok "${cmd} already installed: ${found}"
@@ -580,7 +636,7 @@ ensure_upstream() {
   tmp="$(mktemp "${TMPDIR:-/tmp}/${cmd}-install.XXXXXX.sh")" || die "Failed to create a temp file for the ${cmd} installer."
   CLEANUP_PATH=${tmp}
   curl -fsSL --retry 3 "${url}" -o "${tmp}" || die "Failed to download ${url}"
-  sh "${tmp}" || die "The ${cmd} installer failed."
+  "${interpreter}" "${tmp}" || die "The ${cmd} installer failed."
   rm -f -- "${tmp}"
   CLEANUP_PATH=''
   hash -r 2>/dev/null || true
@@ -590,9 +646,9 @@ ensure_upstream() {
 
 install_tools() {
   # Claude Code: npm installs are deprecated upstream. On Arch the bundle's
-  # AUR package already provides it.
-  if [[ ${DISTRO} == fedora ]]; then
-    ensure_upstream claude https://claude.ai/install.sh
+  # AUR package already provides it; Fedora and Debian use its installer.
+  if [[ ${DISTRO} == fedora || ${DISTRO} == debian ]]; then
+    ensure_upstream claude https://claude.ai/install.sh bash
   fi
   ensure_upstream herdr https://herdr.dev/install.sh
 }

@@ -1,0 +1,39 @@
+# Debian and Ubuntu command-line setup. Intended for recent releases (Ubuntu
+# 24.04+ / Debian 13+), including WSL: no desktop or system provisioning.
+# `dot init` links shared terminal/editor settings, installs agent CLIs, and
+# deploys the curated skills to OpenCode, Claude Code, Codex, and Pi.
+#
+#   repo "name"            signed APT package; gh and nodejs come from their
+#                          official vendor repositories configured by dot
+#   npm "package"          user-global install with lifecycle scripts disabled
+#   npm-scripts "package"  only for OpenCode's required binary-fetch script
+
+# Shell and terminal toolchain
+repo "fish" # interactive shell and the shared fish configuration
+repo "starship" # prompt configured by home/.config/starship.toml
+repo "eza" # modern ls used by the fish config when available
+repo "zoxide" # smarter cd, initialized by fish
+repo "fzf" # fuzzy finder
+repo "fd-find" # modern find replacement
+repo "bat" # syntax-highlighted cat
+repo "direnv" # per-directory environment hook
+repo "lazygit" # terminal Git UI and the shared lg abbreviation
+repo "fastfetch" # fish greeting system summary
+repo "neovim" # editor with the shared LazyVim configuration
+
+# Plumbing for these dotfiles
+repo "stow" # deploys home/ into the user's home directory
+repo "shellcheck" # linting the dot script
+repo "git" # version control and repository maintenance
+repo "curl" # downloads official user-space installers
+repo "ca-certificates" # HTTPS verification for APT and vendor installers
+repo "gnupg" # signed APT repository key support
+repo "nodejs" # Node.js 24 and npm from NodeSource for agent CLIs and skills
+repo "gh" # GitHub CLI from GitHub's official APT repository
+
+# AI agent CLIs and skill helpers
+npm "@openai/codex" # OpenAI Codex CLI
+npm "@earendil-works/pi-coding-agent" # Pi coding agent CLI
+npm-scripts "@opencode/cli" # OpenCode; its postinstall fetches the platform binary
+npm "defuddle" # clean web-page extraction used by a curated skill
+npm "knap" # Markdown template renderer used by a curated skill

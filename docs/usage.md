@@ -43,6 +43,21 @@ CLI version and agent targets live in `lib/shared-home.sh`. OpenCode and Codex
 use the universal skill directory; the CLI also links Claude Code and Pi.
 Plain `dot stow` does not download skills; use `init`/`update` for a full refresh.
 
+## Debian and Ubuntu command-line setup
+
+Use `./dot init` on recent Debian or Ubuntu releases, including Ubuntu in WSL.
+This path installs the APT bundle in [`packages/debian.bundle`](../packages/debian.bundle),
+links the shared Fish, Git, and Neovim configuration, installs Claude Code and
+Herdr, then syncs the curated skills to OpenCode, Claude Code, Codex, and Pi.
+It does not run Arch or Fedora provisioning.
+
+The setup adds the signed GitHub CLI APT repository and NodeSource Node.js 24
+repository before installing the bundle. NodeSource provides the current npm
+needed by the agent CLIs and the scoped lifecycle-script install for OpenCode.
+Rerun `./dot init` to repair or refresh the setup. Review
+[`home/.config/git/config`](../home/.config/git/config) first: Stow overwrites
+conflicting home files without a backup.
+
 ## Fedora provisioning
 
 Starting point: vanilla Fedora Workstation, non-atomic. `fedora-setup` and
@@ -144,7 +159,7 @@ The kernel module keeps building after install — wait a few minutes
 
 | Verb | Distros | Meaning |
 |---|---|---|
-| `repo "name"` | both | official and configured vendor repositories (`pacman` / `dnf`) |
+| `repo "name"` | all | official and configured vendor repositories (`pacman`, `dnf`, or `apt`) |
 | `aur "name"` | Arch | AUR via `yay`, with a PKGBUILD review prompt |
 | `repofile "URL"` | Fedora | vendor repository file, configured before installs |
 | `copr "owner/project"` | Fedora | COPR enablement, configured before installs |
@@ -181,6 +196,8 @@ into a partially upgraded system.
   and foreign symlinks are preserved.
 - `home-fedora/` — Fedora's standalone Ghostty configuration. Hyprland input
   has been retired; Arch's compositor-owned configuration is unchanged.
+- `packages/debian.bundle` — CLI packages for recent Debian/Ubuntu installs,
+  including WSL; it uses only the shared home tree and runs no desktop setup.
 - `home-arch/` — Arch desktop overlay, stowed on Arch only, except the two
   compositor-owned user files (`hypr-user.lua`, `hypr-vars.lua`), which
   deploy once as real files you may edit freely.

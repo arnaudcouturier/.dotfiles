@@ -1,7 +1,9 @@
 # AGENTS.md — maintainer notes
 
-Dotfiles for Arch Linux and Fedora Workstation. `dot` owns installation, one
-shared `home/`, one bundle per distro, plus an Arch-only `home-arch/` overlay.
+Dotfiles for Arch Linux, Fedora Workstation, and recent Debian/Ubuntu user
+environments. `dot` owns installation, one shared `home/`, one bundle per
+distro family, plus distro overlays for Arch and Fedora. Debian/Ubuntu support
+is CLI-only (including WSL); it does not provision a desktop or system stack.
 Arch system provisioning lives behind `./dot arch-setup`/`arch-check`
 (idempotent; re-running repairs). Fedora system provisioning lives behind
 `./dot fedora-setup`/`fedora-check` (same machinery: canonical steps,
@@ -31,9 +33,10 @@ desktop module copy-deploys them as real files instead). `doctor`
 checks each tree against its selected source. The retired Hyprland input path
 remains in the exclusion list only for legacy-link cleanup.
 - **Never translate package names between distros.** Each bundle is a recipe
-  for one distro. `dot` refuses a verb the current distro cannot use and dies
-  before changing anything. Verify a Fedora entry against its vendor before
-  adding it — never guess a name from an Arch one.
+  for one distro family. `dot` refuses a verb the current distro cannot use
+  and dies before changing anything. Verify a Fedora entry against its vendor
+  before adding it — never guess a name from an Arch one. Debian/Ubuntu uses
+  `packages/debian.bundle` with APT names.
 - **Flatpak only for a vendor-verified Flathub build.** `flatpak` entries
   install system-wide from flathub and are Fedora-only; an app whose Flathub
   build is not verified by its vendor gets a pinned vendor RPM or an AppImage
@@ -90,6 +93,13 @@ then refreshes Matt Pocock's set and Herdr's official skill. npx owns deployed
 skill directories and compatibility links. Edit curated sources in the repo,
 not the installed copies. Never restore a deleted skill. Retired stow links
 are removed only when they resolve into this checkout; preserve local files.
+
+Debian/Ubuntu `init` installs only the command-line bundle, links shared user
+configuration, installs Claude Code and Herdr, syncs the configured agent
+skills, and sets fish as the login shell. It configures GitHub CLI's signed APT
+repository and NodeSource Node.js 24 so the current GitHub/agent CLIs and the
+`npm-scripts` allow-list work; it never runs the Arch or Fedora provisioning
+steps. Keep this path usable from WSL without desktop assumptions.
 
 Bash: `set -euo pipefail`, quoted expansions, `die` on bad input, a comment
 above anything non-obvious. Before committing a change to `dot`:
